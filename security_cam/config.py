@@ -8,7 +8,7 @@ class Config:
     CAPTURE_FPS = int(os.getenv("SC_CAPTURE_FPS", 1))  # lower for Pi 3B CPU
 
     # Detection
-    DETECT_EVERY_N_FRAMES = int(os.getenv("SC_DETECT_EVERY_N_FRAMES", 2))
+    DETECT_EVERY_N_FRAMES = int(os.getenv("SC_DETECT_EVERY_N_FRAMES", 3))
     DETECTOR_MIN_WIDTH = int(os.getenv("SC_DETECTOR_MIN_WIDTH", 48))
     DETECTOR_MIN_HEIGHT = int(os.getenv("SC_DETECTOR_MIN_HEIGHT", 96))
     DETECTOR_STRIDE = int(os.getenv("SC_DETECTOR_STRIDE", 8))
