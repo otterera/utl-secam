@@ -6,6 +6,7 @@ and a `HumanDetector` that wraps OpenCV’s default people detector.
 
 from dataclasses import dataclass  # For structured detection results
 from typing import List, Tuple  # Type hints
+import os  # For file existence checks
 
 import cv2  # OpenCV for HOG person detection
 import numpy as np  # Arrays and vectorized NMS
@@ -143,16 +144,29 @@ class FaceDetector:
 
     def __init__(self) -> None:
         """Load OpenCV Haar cascade for frontal faces."""
-        # Use OpenCV's built-in data path when available
+        self.cascade = None
+        # Try several candidate locations; load only if the file exists
+        candidates = []
         try:
-            cascade_dir = cv2.data.haarcascades  # type: ignore[attr-defined]
+            candidates.append(os.path.join(cv2.data.haarcascades, "haarcascade_frontalface_default.xml"))  # type: ignore[attr-defined]
         except Exception:
-            cascade_dir = "/usr/share/opencv4/haarcascades/"
-        path = cascade_dir + "haarcascade_frontalface_default.xml"
-        self.cascade = cv2.CascadeClassifier(path)
+            pass
+        candidates.extend([
+            "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
+            "/usr/share/opencv/haarcascades/haarcascade_frontalface_default.xml",
+            "/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
+        ])
+        for path in candidates:
+            if os.path.exists(path):
+                c = cv2.CascadeClassifier(path)
+                if not c.empty():
+                    self.cascade = c
+                    break
 
     def detect(self, frame_bgr: np.ndarray) -> List[Detection]:
         """Detect frontal faces and return as Detection list."""
+        if self.cascade is None:
+            return []
         gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
         faces = self.cascade.detectMultiScale(
             gray,

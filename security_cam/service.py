@@ -309,7 +309,7 @@ class SecurityCamService:
         # Try to adjust shutter time up to 1s if very dark
         self._maybe_adjust_shutter(exp_state)
         # Try to adjust colour gains for NOIR 'correct' mode if enabled
-        self._maybe_adjust_colour_gains(proc)
+        self._maybe_adjust_colour_gains(frame)
         # Mirror current camera controls into state for UI/API
         self.state.ev_bias = float(getattr(self, "_ev_bias", 0.0))
         self.state.gain = float(getattr(self, "_gain_value", 0.0))
