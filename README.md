@@ -8,7 +8,7 @@ Features
 - Simple Flask dashboard with a warning banner, live frame, and recent gallery
 - Lightweight and configurable for Raspberry Pi 3B
 - Optional daily arming schedule (e.g., 22:00-06:00)
- - Adaptive sensitivity: detects over/under exposure and auto-tunes detection thresholds to reduce false positives and CPU when scenes are too bright/dark.
+- Adaptive sensitivity: detects over/under exposure and auto-tunes detection thresholds to reduce false positives and CPU when scenes are too bright/dark.
 
 Requirements
 ------------
@@ -64,13 +64,13 @@ Tune behavior using environment variables (defaults shown):
 - `SC_DEBUG=0`: Set `1` to enable Flask debug
 - `SC_ACTIVE_WINDOWS=""`: Comma-separated daily windows to arm detection, e.g., `22:00-06:00` or `22:00-06:00,12:30-13:30`. Empty means always armed. Times use the Pi's local time.
 - `SC_CAMERA_BACKEND=auto`: Choose `picamera2`, `v4l2`, or `auto`.
- - Adaptive sensitivity:
-   - `SC_ADAPTIVE_SENSITIVITY=1`: Enable exposure-aware tuning
-   - `SC_EXP_BRIGHT_MEAN=200` / `SC_EXP_DARK_MEAN=40`: Mean brightness cutoffs
-   - `SC_EXP_HIGH_CLIP_FRAC=0.05` / `SC_EXP_LOW_CLIP_FRAC=0.05`: Fraction of pixels near 255/0 to flag clipping
-   - `SC_ADAPT_HIT_THRESHOLD_DELTA=0.5`: Extra HOG hit threshold when exposure is poor
-   - `SC_ADAPT_MIN_SIZE_SCALE=1.2`: Scale min person size under poor exposure
-   - `SC_ADAPT_DETECT_STRIDE_SCALE=2.0`: Multiply detection cadence under poor exposure
+- Adaptive sensitivity:
+  - `SC_ADAPTIVE_SENSITIVITY=1`: Enable exposure-aware tuning
+  - `SC_EXP_BRIGHT_MEAN=200` / `SC_EXP_DARK_MEAN=40`: Mean brightness cutoffs
+  - `SC_EXP_HIGH_CLIP_FRAC=0.05` / `SC_EXP_LOW_CLIP_FRAC=0.05`: Fraction of pixels near 255/0 to flag clipping
+  - `SC_ADAPT_HIT_THRESHOLD_DELTA=0.5`: Extra HOG hit threshold when exposure is poor
+  - `SC_ADAPT_MIN_SIZE_SCALE=1.2`: Scale min person size under poor exposure
+  - `SC_ADAPT_DETECT_STRIDE_SCALE=2.0`: Multiply detection cadence under poor exposure
 
 Notes and Tips
 --------------
@@ -78,7 +78,7 @@ Notes and Tips
 - Camera backend: Picamera2 is preferred. If it’s not available, ensure `/dev/video0` is exposed (e.g., `libcamera-vid --inline --width 640 --height 480 --framerate 10 --codec yuv420 --listen &` can provide a v4l2 loopback if configured) or use the legacy stack if your OS provides it.
 - Storage: Images can fill the SD card. The app enforces `SC_MAX_SAVED_IMAGES`; adjust to your capacity.
 - Service: To run on boot, wrap `python3 /path/to/main.py` in a `systemd` service.
- - Startup: Flask now starts even if the camera backend is slow or failing; set `SC_CAMERA_BACKEND=v4l2` to force OpenCV/V4L2 if Picamera2 causes startup issues.
+- Startup: Flask now starts even if the camera backend is slow or failing; set `SC_CAMERA_BACKEND=v4l2` to force OpenCV/V4L2 if Picamera2 causes startup issues.
 
 systemd Service (Auto-start on Boot)
 ------------------------------------
@@ -193,25 +193,27 @@ Endpoints
 8) Configure behavior
 Edit the service env:
 
-    sudoedit /etc/default/raspi-security-cam
-    # SC_HOST=0.0.0.0
-    # SC_PORT=8000
-    # SC_CAMERA_BACKEND=picamera2   # or v4l2 or auto
-    # SC_FRAME_WIDTH=640
-    # SC_FRAME_HEIGHT=480
-    # SC_CAPTURE_FPS=5
-    # SC_DETECT_EVERY_N_FRAMES=2
-    # SC_SAVE_DIR=/path/to/data/captures
-    # SC_ACTIVE_WINDOWS="22:00-06:00"
-    # Adaptive sensitivity (on by default):
-    # SC_ADAPTIVE_SENSITIVITY=1
-    # SC_EXP_BRIGHT_MEAN=200
-    # SC_EXP_DARK_MEAN=40
-    # SC_EXP_HIGH_CLIP_FRAC=0.05
-    # SC_EXP_LOW_CLIP_FRAC=0.05
-    # SC_ADAPT_HIT_THRESHOLD_DELTA=0.5
-    # SC_ADAPT_MIN_SIZE_SCALE=1.2
-    # SC_ADAPT_DETECT_STRIDE_SCALE=2.0
+```
+sudoedit /etc/default/raspi-security-cam
+# SC_HOST=0.0.0.0
+# SC_PORT=8000
+# SC_CAMERA_BACKEND=picamera2   # or v4l2 or auto
+# SC_FRAME_WIDTH=640
+# SC_FRAME_HEIGHT=480
+# SC_CAPTURE_FPS=5
+# SC_DETECT_EVERY_N_FRAMES=2
+# SC_SAVE_DIR=/path/to/data/captures
+# SC_ACTIVE_WINDOWS="22:00-06:00"
+# Adaptive sensitivity (on by default):
+# SC_ADAPTIVE_SENSITIVITY=1
+# SC_EXP_BRIGHT_MEAN=200
+# SC_EXP_DARK_MEAN=40
+# SC_EXP_HIGH_CLIP_FRAC=0.05
+# SC_EXP_LOW_CLIP_FRAC=0.05
+# SC_ADAPT_HIT_THRESHOLD_DELTA=0.5
+# SC_ADAPT_MIN_SIZE_SCALE=1.2
+# SC_ADAPT_DETECT_STRIDE_SCALE=2.0
+```
 
 Apply changes:
 
