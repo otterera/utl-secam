@@ -1,0 +1,18 @@
+FROM mcr.microsoft.com/devcontainers/python:0-3.10
+
+ENV TZ "Asia/Tokyo"
+RUN apt-get update && \
+    apt-get -y install vim
+
+RUN pip install --upgrade pip
+RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+# PS1プロンプトとvim設定を変更
+RUN echo "PS1='\[\033[01;32m\]ullm\[\033[38;5;208m\]\W\[\033[00m\] '" >> /root/.bashrc && \
+    echo "syntax enable\nhighlight Comment ctermfg=green" >> /root/.vimrc
+
+# エイリアスの設定
+RUN echo "alias python=python3" >> /root/.bashrc && \
+    echo "alias pip=pip3" >> /root/.bashrc
+
+CMD ["/bin/bash"]

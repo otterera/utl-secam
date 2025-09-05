@@ -1,0 +1,20 @@
+version: '3.9'
+
+services:
+  work:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    runtime: nvidia
+    stdin_open: true
+    tty: true
+    ipc: host
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    environment:
+      - PYTHONPATH=/workspace
+      - NVIDIA_VISIBLE_DEVICES=0
+    ulimits:
+      memlock: -1
+      stack: 67108864
