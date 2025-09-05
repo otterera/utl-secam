@@ -15,15 +15,17 @@ from .config import Config  # Tunable detector parameters
 
 @dataclass
 class Detection:
-    """Represents a single detection box and score.
+    """Represents a single detection result.
 
     Attributes:
       bbox: (x, y, w, h) bounding box in image coordinates.
-      score: Detector confidence score.
+      score: Detector confidence score (if available).
+      kind: Label of detector type, e.g., 'person' or 'face'.
     """
 
     bbox: Tuple[int, int, int, int]  # x, y, w, h
     score: float  # Detector score
+    kind: str  # e.g., 'person' or 'face'
 
 
 def _nms(boxes: np.ndarray, scores: np.ndarray, iou_thresh: float = 0.4) -> List[int]:
@@ -125,7 +127,7 @@ class HumanDetector:
             min_h = Config.DETECTOR_MIN_HEIGHT if min_size is None else int(min_size[1])
             if w0 < min_w or h0 < min_h:
                 continue  # Skip tiny boxes
-            detections.append(Detection((x, y, w0, h0), float(score)))  # Add result
+            detections.append(Detection((x, y, w0, h0), float(score), "person"))  # Add result
 
         # Non-maximum suppression to reduce overlapping boxes
         if detections:
@@ -134,3 +136,69 @@ class HumanDetector:
             keep = _nms(boxes, scores, iou_thresh=0.4)  # Indices to keep
             detections = [d for i, d in enumerate(detections) if i in keep]  # Filtered list
         return detections  # Final detections
+
+
+class FaceDetector:
+    """Haar cascade face detector as a complementary signal."""
+
+    def __init__(self) -> None:
+        """Load OpenCV Haar cascade for frontal faces."""
+        # Use OpenCV's built-in data path when available
+        try:
+            cascade_dir = cv2.data.haarcascades  # type: ignore[attr-defined]
+        except Exception:
+            cascade_dir = "/usr/share/opencv4/haarcascades/"
+        path = cascade_dir + "haarcascade_frontalface_default.xml"
+        self.cascade = cv2.CascadeClassifier(path)
+
+    def detect(self, frame_bgr: np.ndarray) -> List[Detection]:
+        """Detect frontal faces and return as Detection list."""
+        gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
+        faces = self.cascade.detectMultiScale(
+            gray,
+            scaleFactor=Config.FACE_SCALE_FACTOR,
+            minNeighbors=Config.FACE_MIN_NEIGHBORS,
+            flags=cv2.CASCADE_SCALE_IMAGE,
+            minSize=(Config.FACE_MIN_SIZE, Config.FACE_MIN_SIZE),
+        )
+        detections: List[Detection] = []
+        for (x, y, w, h) in faces:
+            detections.append(Detection((int(x), int(y), int(w), int(h)), 1.0, "face"))
+        return detections
+
+
+class MultiHumanDetector:
+    """Composite detector: HOG person + Haar face.
+
+    Triggers if either a person or a face is detected. Overlapping boxes are
+    reduced via NMS.
+    """
+
+    def __init__(self) -> None:
+        self.person = HumanDetector()
+        self.face = FaceDetector() if Config.USE_FACE_DETECT else None
+
+    def detect(
+        self,
+        frame_bgr: np.ndarray,
+        *,
+        hit_threshold: float | None = None,
+        min_size: Tuple[int, int] | None = None,
+    ) -> List[Detection]:
+        """Run combined person + face detection and merge results."""
+        results: List[Detection] = []
+        # Person detection (HOG)
+        results.extend(self.person.detect(frame_bgr))
+        # Face detection (Haar)
+        if self.face is not None:
+            try:
+                results.extend(self.face.detect(frame_bgr))
+            except Exception:
+                pass
+        if not results:
+            return []
+        # NMS across mixed detections using their scores
+        boxes = np.array([(*d.bbox,) for d in results]).astype(np.float32)
+        scores = np.array([d.score for d in results]).astype(np.float32)
+        keep = _nms(boxes, scores, iou_thresh=0.4)
+        return [d for i, d in enumerate(results) if i in keep]

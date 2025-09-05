@@ -93,3 +93,9 @@ class Config:
     GAIN_STEP = float(os.getenv("SC_GAIN_STEP", 0.5))
     GAIN_RETURN_STEP = float(os.getenv("SC_GAIN_RETURN_STEP", 0.25))
     GAIN_UPDATE_INTERVAL_SEC = float(os.getenv("SC_GAIN_UPDATE_INTERVAL_SEC", 1.0))
+
+    # Face detection to complement HOG person detection
+    USE_FACE_DETECT = os.getenv("SC_USE_FACE_DETECT", "1") == "1"
+    FACE_SCALE_FACTOR = float(os.getenv("SC_FACE_SCALE_FACTOR", 1.12))
+    FACE_MIN_NEIGHBORS = int(os.getenv("SC_FACE_MIN_NEIGHBORS", 3))
+    FACE_MIN_SIZE = int(os.getenv("SC_FACE_MIN_SIZE", 24))  # min face size in pixels
