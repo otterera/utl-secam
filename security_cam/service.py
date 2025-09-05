@@ -126,6 +126,15 @@ class SecurityCamService:
                 time.sleep(0.01)
                 continue
 
+            # Apply fixed rotation (e.g., for upside-down installation)
+            rot = int(self.config.ROTATE_DEGREES)
+            if rot == 180:
+                frame = cv2.rotate(frame, cv2.ROTATE_180)
+            elif rot == 90:
+                frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+            elif rot == 270:
+                frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+
             # exposure analysis and adaptive sensitivity (also selects enhancement)
             self._update_exposure_and_adapt(frame)
 

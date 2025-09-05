@@ -46,6 +46,10 @@ class Config:
     # Empty means always armed.
     ACTIVE_WINDOWS = os.getenv("SC_ACTIVE_WINDOWS", "").strip()  # Daily arming windows
 
+    # Frame orientation
+    # Rotate frames by this many degrees (allowed: 0, 90, 180, 270). Default: 180 for upside-down installs.
+    ROTATE_DEGREES = int(os.getenv("SC_ROTATE_DEGREES", 180))
+
     # Adaptive sensitivity based on exposure (brightness) analysis
     ADAPTIVE_SENSITIVITY = os.getenv("SC_ADAPTIVE_SENSITIVITY", "1") == "1"  # Toggle adaptive behavior
     EXP_BRIGHT_MEAN = float(os.getenv("SC_EXP_BRIGHT_MEAN", 200))  # Over-exposure mean threshold
