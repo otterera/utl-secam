@@ -1,0 +1,22 @@
+## Copy to /etc/systemd/system/raspi-security-cam.service and adjust paths/user
+[Unit]
+Description=Raspberry Pi Security Camera (Python)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Set the user that should run the service
+User=pi
+WorkingDirectory=/home/pi/raspi-security-cam
+EnvironmentFile=-/etc/default/raspi-security-cam
+ExecStart=/usr/bin/python3 -u main.py
+Restart=always
+RestartSec=3
+Nice=5
+# Provide a bit more file descriptors in case of many images
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target
+

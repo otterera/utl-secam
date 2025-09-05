@@ -26,6 +26,7 @@ def create_app(service: SecurityCamService) -> flask.Flask:
             alert_active=alert_active,
             saved_count=st.saved_images_count,
             total_frames=st.total_frames,
+            armed=st.armed,
             latest_files=[os.path.basename(p) for p in latest_files],
             ts=int(time.time()),
         )
@@ -56,6 +57,7 @@ def create_app(service: SecurityCamService) -> flask.Flask:
             "last_detection_ts": st.last_detection_ts,
             "saved_images_count": st.saved_images_count,
             "total_frames": st.total_frames,
+            "armed": st.armed,
         }
 
     @app.route("/stream.mjpg")
@@ -86,10 +88,13 @@ _INDEX_TEMPLATE = """
   <title>Raspberry Pi Security Cam</title>
   <style>
     body { font-family: system-ui, Arial, sans-serif; margin: 0; background: #111; color: #eee; }
-    header { padding: 12px 16px; background: #222; display: flex; align-items: center; justify-content: space-between; }
+    header { padding: 12px 16px; background: #222; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .alert { padding: 8px 12px; border-radius: 6px; font-weight: bold; }
     .alert.on { background: #b00020; color: #fff; }
     .alert.off { background: #2a2a2a; color: #aaa; }
+    .arm { padding: 6px 10px; border-radius: 6px; font-weight: 600; font-size: 12px; }
+    .arm.on { background: #144d14; color: #bff5bf; }
+    .arm.off { background: #3a3a3a; color: #bbb; }
     main { padding: 16px; }
     .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
     .card { background: #1b1b1b; padding: 8px; border-radius: 8px; }
@@ -102,7 +107,14 @@ _INDEX_TEMPLATE = """
   </head>
   <body>
     <header>
-      <div><strong>Security Cam</strong></div>
+      <div style="display:flex; align-items:center; gap:8px">
+        <strong>Security Cam</strong>
+        {% if armed %}
+          <span class="arm on">Armed</span>
+        {% else %}
+          <span class="arm off">Disarmed</span>
+        {% endif %}
+      </div>
       {% if alert_active %}
         <div class="alert on">HUMAN DETECTED</div>
       {% else %}
@@ -126,4 +138,3 @@ _INDEX_TEMPLATE = """
   </body>
 </html>
 """
-

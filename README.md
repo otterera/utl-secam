@@ -7,6 +7,7 @@ Features
 - Saves many annotated pictures when a human is detected
 - Simple Flask dashboard with a warning banner, live frame, and recent gallery
 - Lightweight and configurable for Raspberry Pi 3B
+- Optional daily arming schedule (e.g., 22:00-06:00)
 
 Requirements
 ------------
@@ -60,6 +61,7 @@ Tune behavior using environment variables (defaults shown):
 - `SC_GALLERY_LATEST_COUNT=12`: Images shown in dashboard gallery
 - `SC_HOST=0.0.0.0` / `SC_PORT=8000`: Server bind
 - `SC_DEBUG=0`: Set `1` to enable Flask debug
+- `SC_ACTIVE_WINDOWS=""`: Comma-separated daily windows to arm detection, e.g., `22:00-06:00` or `22:00-06:00,12:30-13:30`. Empty means always armed. Times use the Pi's local time.
 
 Notes and Tips
 --------------
@@ -68,7 +70,51 @@ Notes and Tips
 - Storage: Images can fill the SD card. The app enforces `SC_MAX_SAVED_IMAGES`; adjust to your capacity.
 - Service: To run on boot, wrap `python3 /path/to/main.py` in a `systemd` service.
 
+systemd Service (Auto-start on Boot)
+------------------------------------
+Quick one-shot setup:
+
+    sudo bash scripts/setup_raspi_env.sh \
+      --user pi \
+      --project-dir /home/pi/raspi-security-cam \
+      --port 8000 \
+      --active-windows "22:00-06:00" \
+      --allow-ufw any
+
+This script installs dependencies, sets up the systemd unit, creates the capture directory, writes `/etc/default/raspi-security-cam`, optionally opens UFW, and starts the service.
+
+Manual steps (alternative):
+1) Copy the unit file and edit paths/user:
+
+    sudo cp packaging/systemd/raspi-security-cam.service /etc/systemd/system/
+    sudoedit /etc/systemd/system/raspi-security-cam.service
+
+   - Set `User=` to the user that should run it (e.g., `pi`).
+   - Set `WorkingDirectory=` to the project path (e.g., `/home/pi/raspi-security-cam`).
+
+2) Optional: configure environment via `/etc/default`:
+
+    sudo cp packaging/systemd/raspi-security-cam.env.example /etc/default/raspi-security-cam
+    sudoedit /etc/default/raspi-security-cam
+
+3) Enable and start:
+
+    sudo systemctl daemon-reload
+    sudo systemctl enable raspi-security-cam
+    sudo systemctl start raspi-security-cam
+    systemctl status raspi-security-cam --no-pager
+
+4) Logs:
+
+    journalctl -u raspi-security-cam -f
+
+Scheduling
+----------
+- Set `SC_ACTIVE_WINDOWS` to arm the detector only during specific daily times. Examples:
+  - Nightly: `SC_ACTIVE_WINDOWS=22:00-06:00`
+  - Multiple windows: `SC_ACTIVE_WINDOWS=22:00-06:00,12:30-13:30`
+- When disarmed, frames still update on the dashboard but detection/saving are paused. The header shows Armed/Disarmed.
+
 License
 -------
 No license specified; for personal use.
-

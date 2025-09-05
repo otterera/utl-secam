@@ -10,6 +10,7 @@ import numpy as np
 from .camera import BaseCamera, make_camera
 from .config import Config
 from .detector import HumanDetector
+from .schedule import DailySchedule
 
 
 @dataclass
@@ -18,6 +19,7 @@ class ServiceState:
     last_detection_ts: float = 0.0
     saved_images_count: int = 0
     total_frames: int = 0
+    armed: bool = True
 
 
 class SecurityCamService:
@@ -26,6 +28,7 @@ class SecurityCamService:
         self.camera: BaseCamera = make_camera()
         self.detector = HumanDetector()
         self.state = ServiceState()
+        self.schedule = DailySchedule(self.config.ACTIVE_WINDOWS)
         self._thread: Optional[threading.Thread] = None
         self._stop = threading.Event()
         self._frame_lock = threading.Lock()
@@ -81,16 +84,21 @@ class SecurityCamService:
                 self._latest_frame = frame
             self.state.total_frames += 1
 
+            # schedule status
+            self.state.armed = self.schedule.is_active_now()
+
             # detection throttling
             if frame_idx % max(1, self.config.DETECT_EVERY_N_FRAMES) == 0:
-                detections = self.detector.detect(frame)
-                if detections:
-                    self.state.detecting = True
-                    self.state.last_detection_ts = time.time()
-                    if self.config.SAVE_ON_DETECT:
-                        self._maybe_save_frame(frame, detections)
-                else:
-                    # keep alert during cooldown
+                detections = []
+                if self.state.armed:
+                    detections = self.detector.detect(frame)
+                    if detections:
+                        self.state.detecting = True
+                        self.state.last_detection_ts = time.time()
+                        if self.config.SAVE_ON_DETECT:
+                            self._maybe_save_frame(frame, detections)
+                # cooldown / idle state
+                if not detections:
                     if time.time() - self.state.last_detection_ts > self.config.ALERT_COOLDOWN_SEC:
                         self.state.detecting = False
 
@@ -137,4 +145,3 @@ class SecurityCamService:
                 os.remove(p)
             except Exception:
                 pass
-

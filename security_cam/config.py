@@ -28,3 +28,6 @@ class Config:
     PORT = int(os.getenv("SC_PORT", 8000))
     DEBUG = os.getenv("SC_DEBUG", "0") == "1"
 
+    # Schedule (comma-separated daily windows, e.g., "22:00-06:00,12:30-13:30").
+    # Empty means always armed.
+    ACTIVE_WINDOWS = os.getenv("SC_ACTIVE_WINDOWS", "").strip()
