@@ -13,6 +13,36 @@ class Detection:
     score: float
 
 
+def _nms(boxes: np.ndarray, scores: np.ndarray, iou_thresh: float = 0.4) -> List[int]:
+    """Pure-python/Numpy NMS for [x, y, w, h] boxes; returns kept indices."""
+    if len(boxes) == 0:
+        return []
+    # convert to x1,y1,x2,y2
+    x1 = boxes[:, 0]
+    y1 = boxes[:, 1]
+    x2 = boxes[:, 0] + boxes[:, 2]
+    y2 = boxes[:, 1] + boxes[:, 3]
+    areas = (x2 - x1 + 1) * (y2 - y1 + 1)
+    order = scores.argsort()[::-1]
+    keep: List[int] = []
+    while order.size > 0:
+        i = int(order[0])
+        keep.append(i)
+        if order.size == 1:
+            break
+        xx1 = np.maximum(x1[i], x1[order[1:]])
+        yy1 = np.maximum(y1[i], y1[order[1:]])
+        xx2 = np.minimum(x2[i], x2[order[1:]])
+        yy2 = np.minimum(y2[i], y2[order[1:]])
+        w = np.maximum(0.0, xx2 - xx1 + 1)
+        h = np.maximum(0.0, yy2 - yy1 + 1)
+        inter = w * h
+        iou = inter / (areas[i] + areas[order[1:]] - inter)
+        inds = np.where(iou <= iou_thresh)[0]
+        order = order[inds + 1]
+    return keep
+
+
 class HumanDetector:
     def __init__(self) -> None:
         self.hog = cv2.HOGDescriptor()
@@ -51,11 +81,6 @@ class HumanDetector:
         if detections:
             boxes = np.array([(*d.bbox,) for d in detections]).astype(np.float32)
             scores = np.array([d.score for d in detections]).astype(np.float32)
-            idxs = cv2.dnn.NMSBoxesBatched(
-                [boxes.tolist()], [scores.tolist()], score_threshold=0.0, nms_threshold=0.4
-            )
-            # idxs is a list of lists per batch; we have a single batch
-            keep = set(int(i) for i in (idxs[0] if len(idxs) > 0 else []))
-            detections = [d for i, d in enumerate(detections) if i in keep] or detections
+            keep = _nms(boxes, scores, iou_thresh=0.4)
+            detections = [d for i, d in enumerate(detections) if i in keep]
         return detections
-

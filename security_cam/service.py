@@ -101,7 +101,12 @@ class SecurityCamService:
             if frame_idx % max(1, self.config.DETECT_EVERY_N_FRAMES) == 0:
                 detections = []
                 if self.state.armed:
-                    detections = self.detector.detect(frame)
+                    try:
+                        detections = self.detector.detect(frame)
+                    except Exception as e:
+                        # Never let detection errors kill the capture loop
+                        print(f"[secam] Detection error: {e}", flush=True)
+                        detections = []
                     if detections:
                         self.state.detecting = True
                         self.state.last_detection_ts = time.time()
