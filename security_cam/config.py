@@ -53,7 +53,7 @@ class Config:
     # Automatic shutter (exposure time) adaptation (Picamera2 only)
     SHUTTER_ADAPT_ENABLE = os.getenv("SC_SHUTTER_ADAPT_ENABLE", "0") == "1"
     SHUTTER_MIN_US = int(os.getenv("SC_SHUTTER_MIN_US", 5000))  # 1/200s
-    SHUTTER_MAX_US = int(os.getenv("SC_SHUTTER_MAX_US", 1_000_000))  # up to 1 second
+    SHUTTER_MAX_US = int(os.getenv("SC_SHUTTER_MAX_US", 930_000))  # up to 0.93 second
     SHUTTER_STEP_US = int(os.getenv("SC_SHUTTER_STEP_US", 20_000))
     SHUTTER_RETURN_STEP_US = int(os.getenv("SC_SHUTTER_RETURN_STEP_US", 10_000))
     SHUTTER_BASE_US = int(os.getenv("SC_SHUTTER_BASE_US", 10_000))  # target when normal (~1/100s)
