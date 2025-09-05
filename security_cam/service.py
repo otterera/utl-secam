@@ -149,6 +149,15 @@ class SecurityCamService:
             elif rot == 270:
                 frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
+            # If using NOIR profile and monochrome rendering is requested,
+            # convert to grayscale for stable detection/appearance under IR.
+            if self.config.CAMERA_PROFILE == "noir" and self.config.NOIR_RENDER_MODE == "mono":
+                try:
+                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    frame = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+                except Exception:
+                    pass
+
             # exposure analysis and adaptive sensitivity (also selects enhancement)
             self._update_exposure_and_adapt(frame)
 

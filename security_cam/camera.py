@@ -103,6 +103,24 @@ class PiCamera2Wrapper(BaseCamera):
             self.picam2.set_controls({"AeEnable": True})
         except Exception:
             pass
+        # Handle NOIR (infrared) profile: adjust AWB/colour gains
+        try:
+            if Config.CAMERA_PROFILE == "noir":
+                if Config.NOIR_RENDER_MODE == "correct":
+                    # Disable AWB and apply fixed colour gains to reduce color cast
+                    self.picam2.set_controls({
+                        "AwbEnable": False,
+                        "ColourGains": (float(Config.NOIR_COLOUR_GAIN_R), float(Config.NOIR_COLOUR_GAIN_B)),
+                    })
+                else:
+                    # Prefer grayscale rendering; keep AWB off to avoid odd shifts
+                    self.picam2.set_controls({"AwbEnable": False})
+            else:
+                # Standard profile: allow AWB
+                self.picam2.set_controls({"AwbEnable": True})
+        except Exception:
+            # If any control is unsupported, ignore quietly
+            pass
         self.picam2.start()  # Start the camera
         self._started = True  # Mark as started
 

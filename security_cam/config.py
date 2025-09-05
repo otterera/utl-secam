@@ -20,6 +20,8 @@ class Config:
     FRAME_HEIGHT = int(os.getenv("SC_FRAME_HEIGHT", 240))  # Capture height in pixels
     CAPTURE_FPS = int(os.getenv("SC_CAPTURE_FPS", 1))  # Target FPS (kept low for Pi 3B CPU)
     CAMERA_BACKEND = os.getenv("SC_CAMERA_BACKEND", "auto").strip().lower()  # Camera backend: auto|picamera2|v4l2
+    # Camera profile: standard color camera vs. NOIR (infrared, no IR-cut)
+    CAMERA_PROFILE = os.getenv("SC_CAMERA_PROFILE", "standard").strip().lower()  # standard|noir
 
     # Detection
     DETECT_EVERY_N_FRAMES = int(os.getenv("SC_DETECT_EVERY_N_FRAMES", 2))  # Run detector every N frames
@@ -49,6 +51,15 @@ class Config:
     # Frame orientation
     # Rotate frames by this many degrees (allowed: 0, 90, 180, 270). Default: 180 for upside-down installs.
     ROTATE_DEGREES = int(os.getenv("SC_ROTATE_DEGREES", 180))
+
+    # NOIR (infrared) rendering and color correction
+    # When using NOIR, colors are unreliable; choose rendering mode:
+    #  - mono: render/detect in grayscale (recommended under IR illumination)
+    #  - correct: attempt color correction via fixed colour gains
+    NOIR_RENDER_MODE = os.getenv("SC_NOIR_RENDER_MODE", "mono").strip().lower()  # mono|correct
+    # Fixed colour gains for Picamera2 when NOIR and correction is desired
+    NOIR_COLOUR_GAIN_R = float(os.getenv("SC_NOIR_COLOUR_GAIN_R", 1.5))
+    NOIR_COLOUR_GAIN_B = float(os.getenv("SC_NOIR_COLOUR_GAIN_B", 1.5))
 
     # Automatic shutter (exposure time) adaptation (Picamera2 only)
     SHUTTER_ADAPT_ENABLE = os.getenv("SC_SHUTTER_ADAPT_ENABLE", "0") == "1"

@@ -64,6 +64,10 @@ Tune behavior using environment variables (defaults shown):
 - `SC_DEBUG=0`: Set `1` to enable Flask debug
 - `SC_ACTIVE_WINDOWS=""`: Comma-separated daily windows to arm detection, e.g., `22:00-06:00` or `22:00-06:00,12:30-13:30`. Empty means always armed. Times use the Pi's local time.
 - `SC_CAMERA_BACKEND=auto`: Choose `picamera2`, `v4l2`, or `auto`.
+- `SC_CAMERA_PROFILE=standard` or `noir`: Select standard color camera or NOIR (infrared)
+- NOIR options:
+  - `SC_NOIR_RENDER_MODE=mono` (recommended under IR) or `correct`
+  - If `correct`: `SC_NOIR_COLOUR_GAIN_R=1.5`, `SC_NOIR_COLOUR_GAIN_B=1.5` (tune to reduce color cast)
 - Adaptive sensitivity:
   - `SC_ADAPTIVE_SENSITIVITY=1`: Enable exposure-aware tuning
   - `SC_EXP_BRIGHT_MEAN=200` / `SC_EXP_DARK_MEAN=40`: Mean brightness cutoffs
@@ -102,6 +106,7 @@ Notes and Tips
 - Storage: Images can fill the SD card. The app enforces `SC_MAX_SAVED_IMAGES`; adjust to your capacity.
 - Service: To run on boot, wrap `python3 /path/to/main.py` in a `systemd` service.
 - Startup: Flask now starts even if the camera backend is slow or failing; set `SC_CAMERA_BACKEND=v4l2` to force OpenCV/V4L2 if Picamera2 causes startup issues.
+ - NOIR (IR) cameras: Colors are unreliable under IR illumination. Prefer `SC_NOIR_RENDER_MODE=mono` for clear grayscale images and more stable detection. If you need color, set `SC_NOIR_RENDER_MODE=correct` and tune `SC_NOIR_COLOUR_GAIN_R/B`.
 
 systemd Service (Auto-start on Boot)
 ------------------------------------
