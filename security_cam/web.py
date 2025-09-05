@@ -1,11 +1,8 @@
-import io
 import os
 import time
-from typing import Optional
 
 import cv2
 import flask
-import numpy as np
 
 from .config import Config
 from .service import SecurityCamService

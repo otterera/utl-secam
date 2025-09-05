@@ -9,7 +9,7 @@ class Config:
     CAMERA_BACKEND = os.getenv("SC_CAMERA_BACKEND", "auto").strip().lower()  # auto|picamera2|v4l2
 
     # Detection
-    DETECT_EVERY_N_FRAMES = int(os.getenv("SC_DETECT_EVERY_N_FRAMES", 3))
+    DETECT_EVERY_N_FRAMES = int(os.getenv("SC_DETECT_EVERY_N_FRAMES", 2))
     DETECTOR_MIN_WIDTH = int(os.getenv("SC_DETECTOR_MIN_WIDTH", 48))
     DETECTOR_MIN_HEIGHT = int(os.getenv("SC_DETECTOR_MIN_HEIGHT", 96))
     DETECTOR_STRIDE = int(os.getenv("SC_DETECTOR_STRIDE", 8))

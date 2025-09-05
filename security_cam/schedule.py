@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, time
-from typing import List, Tuple
+from typing import List
 
 
 def _parse_hhmm(s: str) -> time:
@@ -45,4 +45,3 @@ class DailySchedule:
             return True
         now_t = datetime.now().time()
         return any(w.contains(now_t) for w in self.windows)
-
