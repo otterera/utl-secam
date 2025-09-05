@@ -38,6 +38,9 @@ def create_app(service: SecurityCamService) -> flask.Flask:
             person_count=getattr(st, "person_count", 0),
             face_count=getattr(st, "face_count", 0),
             exposure_state=st.exposure_state,
+            ev_bias=getattr(st, "ev_bias", 0.0),
+            gain=getattr(st, "gain", 0.0),
+            shutter_ms=int(getattr(st, "shutter_us", 0) / 1000),
             latest_files=[os.path.basename(p) for p in latest_files],
             ts=int(time.time()),
         )
@@ -81,6 +84,9 @@ def create_app(service: SecurityCamService) -> flask.Flask:
             "person_count": getattr(st, "person_count", 0),
             "face_count": getattr(st, "face_count", 0),
             "kinds": getattr(st, "last_kinds", []),
+            "ev_bias": getattr(st, "ev_bias", 0.0),
+            "gain": getattr(st, "gain", 0.0),
+            "shutter_us": getattr(st, "shutter_us", 0),
         }
 
     @app.route("/stream.mjpg")
@@ -122,6 +128,7 @@ _INDEX_TEMPLATE = """
     .pill { padding: 4px 8px; border-radius: 999px; font-weight: 600; font-size: 11px; }
     .pill.person { background: #441111; color: #ff9a9a; border: 1px solid #b00020; }
     .pill.face { background: #0f2b3a; color: #9eeaff; border: 1px solid #1aa3d9; }
+    .pill.cam { background: #2a2a2a; color: #bbb; border: 1px solid #444; }
     .exp { padding: 6px 10px; border-radius: 6px; font-weight: 600; font-size: 12px; }
     .exp.normal { background: #2a2a2a; color: #bbb; }
     .exp.over { background: #b00020; color: #fff; }
@@ -158,6 +165,9 @@ _INDEX_TEMPLATE = """
         {% if face_count %}
           <span class="pill face">face × {{face_count}}</span>
         {% endif %}
+        <span class="pill cam">EV {{ '%.2f' % ev_bias }}</span>
+        <span class="pill cam">Gain {{ '%.2f' % gain }}</span>
+        <span class="pill cam">Shutter {{ shutter_ms }} ms</span>
       </div>
       {% if alert_active %}
         <div class="alert on">HUMAN DETECTED</div>

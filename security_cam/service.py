@@ -32,6 +32,9 @@ class ServiceState:
     person_count: int = 0
     face_count: int = 0
     last_kinds: List[str] = field(default_factory=list)
+    ev_bias: float = 0.0
+    gain: float = 0.0
+    shutter_us: int = 0
 
 
 class SecurityCamService:
@@ -73,6 +76,10 @@ class SecurityCamService:
         self._shutter_us: int = int(getattr(self.config, "SHUTTER_BASE_US", 10_000))
         self._shutter_last_update: float = 0.0
         self._manual_exposure: bool = False
+        # Initialize public state mirrors
+        self.state.ev_bias = float(self._ev_bias)
+        self.state.gain = float(self._gain_value)
+        self.state.shutter_us = int(self._shutter_us)
 
     # Public API
     def start(self) -> None:
@@ -268,6 +275,10 @@ class SecurityCamService:
         self._maybe_adjust_gain(exp_state)
         # Try to adjust shutter time up to 1s if very dark
         self._maybe_adjust_shutter(exp_state)
+        # Mirror current camera controls into state for UI/API
+        self.state.ev_bias = float(getattr(self, "_ev_bias", 0.0))
+        self.state.gain = float(getattr(self, "_gain_value", 0.0))
+        self.state.shutter_us = int(getattr(self, "_shutter_us", 0))
 
     def _maybe_adjust_ev(self, exp_state: str) -> None:
         """Adapt camera exposure bias (EV) if supported and enabled.
