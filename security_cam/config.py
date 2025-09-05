@@ -73,7 +73,9 @@ class Config:
     # Adaptive sensitivity based on exposure (brightness) analysis
     ADAPTIVE_SENSITIVITY = os.getenv("SC_ADAPTIVE_SENSITIVITY", "1") == "1"  # Toggle adaptive behavior
     EXP_BRIGHT_MEAN = float(os.getenv("SC_EXP_BRIGHT_MEAN", 200))  # Over-exposure mean threshold
-    EXP_DARK_MEAN = float(os.getenv("SC_EXP_DARK_MEAN", 40))  # Under-exposure mean threshold
+    EXP_DARK_MEAN = float(os.getenv("SC_EXP_DARK_MEAN", 40))  # Under-exposure mean threshold (enter)
+    # Hysteresis: leave "under" only when mean exceeds EXIT threshold
+    EXP_DARK_MEAN_EXIT = float(os.getenv("SC_EXP_DARK_MEAN_EXIT", 50))
     EXP_HIGH_CLIP_FRAC = float(os.getenv("SC_EXP_HIGH_CLIP_FRAC", 0.05))  # Fraction near max intensity
     EXP_LOW_CLIP_FRAC = float(os.getenv("SC_EXP_LOW_CLIP_FRAC", 0.05))   # Fraction near min intensity
     EXP_EMA_ALPHA = float(os.getenv("SC_EXP_EMA_ALPHA", 0.35))  # Smoothing factor for exposure metrics (0..1)
@@ -85,6 +87,9 @@ class Config:
     ENHANCE_ON_UNDER = os.getenv("SC_ENHANCE_ON_UNDER", "1") == "1"
     ENHANCE_UNDER_ALPHA = float(os.getenv("SC_ENHANCE_UNDER_ALPHA", 2.5))  # Contrast/gain multiplier
     ENHANCE_UNDER_BETA = float(os.getenv("SC_ENHANCE_UNDER_BETA", 20))  # Brightness offset (0..255)
+    # Smoothing and hold to reduce flicker between bright/dark in dim scenes
+    ENHANCE_BLEND_ALPHA = float(os.getenv("SC_ENHANCE_BLEND_ALPHA", 0.3))  # 0..1; higher = faster blending
+    ENHANCE_HOLD_SEC = float(os.getenv("SC_ENHANCE_HOLD_SEC", 1.5))
     ENHANCE_ON_OVER = os.getenv("SC_ENHANCE_ON_OVER", "1") == "1"
     ENHANCE_OVER_ALPHA = float(os.getenv("SC_ENHANCE_OVER_ALPHA", 0.85))  # Reduce contrast
     ENHANCE_OVER_BETA = float(os.getenv("SC_ENHANCE_OVER_BETA", -10))  # Darken slightly

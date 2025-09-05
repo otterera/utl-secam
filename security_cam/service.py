@@ -66,6 +66,9 @@ class SecurityCamService:
         # Enhancement parameters (contrast/brightness) applied when exposure is poor
         self._enh_alpha: float = 1.0
         self._enh_beta: float = 0.0
+        self._enh_tgt_alpha: float = 1.0
+        self._enh_tgt_beta: float = 0.0
+        self._enh_hold_until: float = 0.0
         # Camera EV-bias adaptation (Picamera2): current bias and last update time
         self._ev_bias: float = 0.0
         self._ev_last_update: float = 0.0
@@ -242,8 +245,13 @@ class SecurityCamService:
         self._exp_low_clip_ema = (1 - alpha) * self._exp_low_clip_ema + alpha * low_clip
         self._exp_high_clip_ema = (1 - alpha) * self._exp_high_clip_ema + alpha * high_clip
 
-        over = self._exp_high_clip_ema > self.config.EXP_HIGH_CLIP_FRAC or self._exp_mean_ema > self.config.EXP_BRIGHT_MEAN
-        under = self._exp_low_clip_ema > self.config.EXP_LOW_CLIP_FRAC or self._exp_mean_ema < self.config.EXP_DARK_MEAN
+        # Apply hysteresis for "under" state using EXIT threshold to leave under-exposed condition
+        prev_state = self.state.exposure_state
+        if prev_state == "under":
+            under = (self._exp_low_clip_ema > self.config.EXP_LOW_CLIP_FRAC) or (self._exp_mean_ema < self.config.EXP_DARK_MEAN_EXIT)
+        else:
+            under = (self._exp_low_clip_ema > self.config.EXP_LOW_CLIP_FRAC) or (self._exp_mean_ema < self.config.EXP_DARK_MEAN)
+        over = (self._exp_high_clip_ema > self.config.EXP_HIGH_CLIP_FRAC) or (self._exp_mean_ema > self.config.EXP_BRIGHT_MEAN)
         if over:
             exp_state = "over"
         elif under:
@@ -269,14 +277,26 @@ class SecurityCamService:
             self._min_size_dyn = self._min_size_base
             self._detect_stride_dyn = self._detect_stride_base
 
-        # Choose enhancement parameters for current exposure state
-        self._enh_alpha, self._enh_beta = 1.0, 0.0
+        # Choose enhancement target with hold + blend to avoid flicker
+        target_alpha, target_beta = 1.0, 0.0
+        now = time.time()
         if exp_state == "under" and self.config.ENHANCE_ON_UNDER:
-            self._enh_alpha = float(self.config.ENHANCE_UNDER_ALPHA)
-            self._enh_beta = float(self.config.ENHANCE_UNDER_BETA)
+            target_alpha = float(self.config.ENHANCE_UNDER_ALPHA)
+            target_beta = float(self.config.ENHANCE_UNDER_BETA)
+            self._enh_hold_until = max(self._enh_hold_until, now + float(self.config.ENHANCE_HOLD_SEC))
         elif exp_state == "over" and self.config.ENHANCE_ON_OVER:
-            self._enh_alpha = float(self.config.ENHANCE_OVER_ALPHA)
-            self._enh_beta = float(self.config.ENHANCE_OVER_BETA)
+            target_alpha = float(self.config.ENHANCE_OVER_ALPHA)
+            target_beta = float(self.config.ENHANCE_OVER_BETA)
+            self._enh_hold_until = max(self._enh_hold_until, now + float(self.config.ENHANCE_HOLD_SEC))
+        else:
+            # Normal: if within hold window, keep previous target
+            if now < self._enh_hold_until:
+                target_alpha, target_beta = self._enh_tgt_alpha, self._enh_tgt_beta
+        # Blend current toward target
+        blend = float(self.config.ENHANCE_BLEND_ALPHA)
+        self._enh_tgt_alpha, self._enh_tgt_beta = target_alpha, target_beta
+        self._enh_alpha = (1.0 - blend) * self._enh_alpha + blend * target_alpha
+        self._enh_beta = (1.0 - blend) * self._enh_beta + blend * target_beta
 
         # Try to adjust camera EV-bias (Picamera2 only) to help AE converge
         self._maybe_adjust_ev(exp_state)
