@@ -3,9 +3,9 @@ import os
 
 class Config:
     # Camera
-    FRAME_WIDTH = int(os.getenv("SC_FRAME_WIDTH", 640))
-    FRAME_HEIGHT = int(os.getenv("SC_FRAME_HEIGHT", 480))
-    CAPTURE_FPS = int(os.getenv("SC_CAPTURE_FPS", 10))  # lower for Pi 3B CPU
+    FRAME_WIDTH = int(os.getenv("SC_FRAME_WIDTH", 320))
+    FRAME_HEIGHT = int(os.getenv("SC_FRAME_HEIGHT", 240))
+    CAPTURE_FPS = int(os.getenv("SC_CAPTURE_FPS", 1))  # lower for Pi 3B CPU
 
     # Detection
     DETECT_EVERY_N_FRAMES = int(os.getenv("SC_DETECT_EVERY_N_FRAMES", 2))
