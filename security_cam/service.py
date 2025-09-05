@@ -244,10 +244,12 @@ class SecurityCamService:
         if not hasattr(self.camera, "set_ev") or not getattr(self.camera, "supports_ev")():
             return
         now = time.time()
-        if now - self._ev_last_update < float(self.config.AE_EV_UPDATE_INTERVAL_SEC):
+        # Be defensive in case fields were not initialized yet
+        last_update = getattr(self, "_ev_last_update", 0.0)
+        if now - last_update < float(self.config.AE_EV_UPDATE_INTERVAL_SEC):
             return  # Too soon to update again
 
-        ev = float(self._ev_bias)
+        ev = float(getattr(self, "_ev_bias", 0.0))
         if exp_state == "under":
             ev = min(self.config.AE_EV_MAX, ev + float(self.config.AE_EV_STEP))
         elif exp_state == "over":
@@ -262,7 +264,7 @@ class SecurityCamService:
         else:
             return
 
-        if abs(ev - self._ev_bias) < 1e-6:
+        if abs(ev - getattr(self, "_ev_bias", 0.0)) < 1e-6:
             return  # No change
         if self.camera.set_ev(ev):
             self._ev_bias = ev
