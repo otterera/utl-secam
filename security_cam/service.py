@@ -57,6 +57,9 @@ class SecurityCamService:
         self._exp_mean_ema = 0.0
         self._exp_low_clip_ema = 0.0
         self._exp_high_clip_ema = 0.0
+        # Enhancement parameters (contrast/brightness) applied when exposure is poor
+        self._enh_alpha: float = 1.0
+        self._enh_beta: float = 0.0
 
     # Public API
     def start(self) -> None:
@@ -117,16 +120,25 @@ class SecurityCamService:
                 time.sleep(0.01)
                 continue
 
-            # store latest
+            # exposure analysis and adaptive sensitivity (also selects enhancement)
+            self._update_exposure_and_adapt(frame)
+
+            # Optionally enhance frame when under/over exposed
+            proc = frame
+            if abs(self._enh_alpha - 1.0) > 1e-3 or abs(self._enh_beta) > 1e-3:
+                try:
+                    proc = cv2.convertScaleAbs(frame, alpha=self._enh_alpha, beta=self._enh_beta)
+                except Exception:
+                    proc = frame
+
+            # store latest (processed) frame
             with self._frame_lock:
-                self._latest_frame = frame
+                self._latest_frame = proc
             self.state.total_frames += 1
 
             # schedule status
             self.state.armed = self.schedule.is_active_now()
 
-            # exposure analysis and adaptive sensitivity
-            self._update_exposure_and_adapt(frame)
             self.state.detect_stride = int(self._detect_stride_dyn)
             self.state.hit_threshold = float(self._hit_threshold_dyn)
 
@@ -136,7 +148,7 @@ class SecurityCamService:
                 if self.state.armed:
                     try:
                         detections = self.detector.detect(
-                            frame,
+                            proc,
                             hit_threshold=self._hit_threshold_dyn,
                             min_size=self._min_size_dyn,
                         )
@@ -148,7 +160,7 @@ class SecurityCamService:
                         self.state.detecting = True
                         self.state.last_detection_ts = time.time()
                         if self.config.SAVE_ON_DETECT:
-                            self._maybe_save_frame(frame, detections)
+                            self._maybe_save_frame(proc, detections)
                 # cooldown / idle state
                 if not detections:
                     if time.time() - self.state.last_detection_ts > self.config.ALERT_COOLDOWN_SEC:
@@ -172,8 +184,8 @@ class SecurityCamService:
         # Use tight thresholds for clip percentages
         low_clip = float((gray <= 5).mean())
         high_clip = float((gray >= 250).mean())
-        # EMA to stabilize
-        alpha = 0.2
+        # EMA to stabilize (configurable smoothing factor)
+        alpha = float(self.config.EXP_EMA_ALPHA)
         self._exp_mean_ema = (1 - alpha) * self._exp_mean_ema + alpha * mean
         self._exp_low_clip_ema = (1 - alpha) * self._exp_low_clip_ema + alpha * low_clip
         self._exp_high_clip_ema = (1 - alpha) * self._exp_high_clip_ema + alpha * high_clip
@@ -204,6 +216,15 @@ class SecurityCamService:
             self._hit_threshold_dyn = self._hit_threshold_base
             self._min_size_dyn = self._min_size_base
             self._detect_stride_dyn = self._detect_stride_base
+
+        # Choose enhancement parameters for current exposure state
+        self._enh_alpha, self._enh_beta = 1.0, 0.0
+        if exp_state == "under" and self.config.ENHANCE_ON_UNDER:
+            self._enh_alpha = float(self.config.ENHANCE_UNDER_ALPHA)
+            self._enh_beta = float(self.config.ENHANCE_UNDER_BETA)
+        elif exp_state == "over" and self.config.ENHANCE_ON_OVER:
+            self._enh_alpha = float(self.config.ENHANCE_OVER_ALPHA)
+            self._enh_beta = float(self.config.ENHANCE_OVER_BETA)
 
     def _maybe_save_frame(self, frame: np.ndarray, detections) -> None:
         """Annotate and save the frame if save rate permits."""

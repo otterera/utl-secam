@@ -52,6 +52,15 @@ class Config:
     EXP_DARK_MEAN = float(os.getenv("SC_EXP_DARK_MEAN", 40))  # Under-exposure mean threshold
     EXP_HIGH_CLIP_FRAC = float(os.getenv("SC_EXP_HIGH_CLIP_FRAC", 0.05))  # Fraction near max intensity
     EXP_LOW_CLIP_FRAC = float(os.getenv("SC_EXP_LOW_CLIP_FRAC", 0.05))   # Fraction near min intensity
+    EXP_EMA_ALPHA = float(os.getenv("SC_EXP_EMA_ALPHA", 0.35))  # Smoothing factor for exposure metrics (0..1)
     ADAPT_HIT_THRESHOLD_DELTA = float(os.getenv("SC_ADAPT_HIT_THRESHOLD_DELTA", 0.5))  # Extra HOG threshold
     ADAPT_MIN_SIZE_SCALE = float(os.getenv("SC_ADAPT_MIN_SIZE_SCALE", 1.2))  # Increase min person size
     ADAPT_DETECT_STRIDE_SCALE = float(os.getenv("SC_ADAPT_DETECT_STRIDE_SCALE", 2.0))  # Slow detection cadence
+
+    # Optional frame enhancement when exposure is poor (applied to displayed/detected frames)
+    ENHANCE_ON_UNDER = os.getenv("SC_ENHANCE_ON_UNDER", "1") == "1"
+    ENHANCE_UNDER_ALPHA = float(os.getenv("SC_ENHANCE_UNDER_ALPHA", 1.5))  # Contrast/gain multiplier
+    ENHANCE_UNDER_BETA = float(os.getenv("SC_ENHANCE_UNDER_BETA", 20))  # Brightness offset (0..255)
+    ENHANCE_ON_OVER = os.getenv("SC_ENHANCE_ON_OVER", "1") == "1"
+    ENHANCE_OVER_ALPHA = float(os.getenv("SC_ENHANCE_OVER_ALPHA", 0.85))  # Reduce contrast
+    ENHANCE_OVER_BETA = float(os.getenv("SC_ENHANCE_OVER_BETA", -10))  # Darken slightly
