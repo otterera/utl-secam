@@ -75,12 +75,18 @@ Tune behavior using environment variables (defaults shown):
  - Optional frame enhancement (applied when exposure is poor):
    - `SC_ENHANCE_ON_UNDER=1`, `SC_ENHANCE_UNDER_ALPHA=1.5`, `SC_ENHANCE_UNDER_BETA=20`
    - `SC_ENHANCE_ON_OVER=1`, `SC_ENHANCE_OVER_ALPHA=0.85`, `SC_ENHANCE_OVER_BETA=-10`
- - Camera-side auto-exposure EV-bias (Picamera2 only):
-   - `SC_AE_EV_ADAPT_ENABLE=1`
-   - `SC_AE_EV_MIN=-2.0` / `SC_AE_EV_MAX=2.0`: EV clamp
-   - `SC_AE_EV_STEP=0.2`: Step toward brighter/darker when under/over
-   - `SC_AE_EV_RETURN_STEP=0.1`: Step back toward 0 when normal
-   - `SC_AE_EV_UPDATE_INTERVAL_SEC=1.0`: Min seconds between EV changes
+- Camera-side auto-exposure EV-bias (Picamera2 only):
+  - `SC_AE_EV_ADAPT_ENABLE=1`
+  - `SC_AE_EV_MIN=-2.0` / `SC_AE_EV_MAX=2.0`: EV clamp
+  - `SC_AE_EV_STEP=0.2`: Step toward brighter/darker when under/over
+  - `SC_AE_EV_RETURN_STEP=0.1`: Step back toward 0 when normal
+  - `SC_AE_EV_UPDATE_INTERVAL_SEC=1.0`: Min seconds between EV changes
+ - Camera analogue gain adaptation (Picamera2 only):
+   - `SC_GAIN_ADAPT_ENABLE=1`
+   - `SC_GAIN_MIN=1.0` / `SC_GAIN_MAX=8.0`: Gain clamp
+   - `SC_GAIN_STEP=0.5`: Step toward brighter/darker when under/over
+   - `SC_GAIN_RETURN_STEP=0.25`: Step back toward 1.0 when normal
+   - `SC_GAIN_UPDATE_INTERVAL_SEC=1.0`: Min seconds between gain changes
 
 Notes and Tips
 --------------

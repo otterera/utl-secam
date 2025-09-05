@@ -51,6 +51,21 @@ class BaseCamera:
         """
         return False
 
+    def supports_gain(self) -> bool:
+        """Return True if this camera supports analogue gain control."""
+        return False
+
+    def set_gain(self, gain: float) -> bool:
+        """Set analogue gain if supported.
+
+        Args:
+          gain: Requested analogue gain (e.g., 1.0–8.0).
+
+        Returns:
+          True if applied; False if unsupported or failed.
+        """
+        return False
+
 
 class PiCamera2Wrapper(BaseCamera):
     """PiCamera2-based camera backend for CSI-connected camera modules."""
@@ -121,6 +136,25 @@ class PiCamera2Wrapper(BaseCamera):
                 return False
             # Keep AE enabled and set the exposure value (bias)
             self.picam2.set_controls({"AeEnable": True, "ExposureValue": float(ev)})
+            return True
+        except Exception:
+            return False
+
+    def supports_gain(self) -> bool:
+        """Picamera2 exposes AnalogueGain control."""
+        return True
+
+    def set_gain(self, gain: float) -> bool:
+        """Attempt to set analogue gain on the camera.
+
+        Note: When AE is enabled, the driver may override this value. It still
+        often works as a hint. For full manual control, AE would be disabled,
+        which we avoid here to keep auto-exposure active.
+        """
+        try:
+            if not self._started or self.picam2 is None:
+                return False
+            self.picam2.set_controls({"AnalogueGain": float(gain)})
             return True
         except Exception:
             return False

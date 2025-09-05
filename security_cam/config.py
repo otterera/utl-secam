@@ -72,3 +72,11 @@ class Config:
     AE_EV_STEP = float(os.getenv("SC_AE_EV_STEP", 0.2))  # Per adjustment step
     AE_EV_RETURN_STEP = float(os.getenv("SC_AE_EV_RETURN_STEP", 0.1))  # Move back toward 0 when normal
     AE_EV_UPDATE_INTERVAL_SEC = float(os.getenv("SC_AE_EV_UPDATE_INTERVAL_SEC", 1.0))
+
+    # Automatic analogue gain adjustment (Picamera2 only)
+    GAIN_ADAPT_ENABLE = os.getenv("SC_GAIN_ADAPT_ENABLE", "1") == "1"
+    GAIN_MIN = float(os.getenv("SC_GAIN_MIN", 1.0))
+    GAIN_MAX = float(os.getenv("SC_GAIN_MAX", 8.0))
+    GAIN_STEP = float(os.getenv("SC_GAIN_STEP", 0.5))
+    GAIN_RETURN_STEP = float(os.getenv("SC_GAIN_RETURN_STEP", 0.25))
+    GAIN_UPDATE_INTERVAL_SEC = float(os.getenv("SC_GAIN_UPDATE_INTERVAL_SEC", 1.0))

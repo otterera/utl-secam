@@ -63,6 +63,9 @@ class SecurityCamService:
         # Camera EV-bias adaptation (Picamera2): current bias and last update time
         self._ev_bias: float = 0.0
         self._ev_last_update: float = 0.0
+        # Camera analogue gain adaptation
+        self._gain_value: float = float(getattr(self.config, "GAIN_MIN", 1.0))
+        self._gain_last_update: float = 0.0
 
     # Public API
     def start(self) -> None:
@@ -231,6 +234,8 @@ class SecurityCamService:
 
         # Try to adjust camera EV-bias (Picamera2 only) to help AE converge
         self._maybe_adjust_ev(exp_state)
+        # Try to adjust analogue gain (Picamera2) to brighten/darken
+        self._maybe_adjust_gain(exp_state)
 
     def _maybe_adjust_ev(self, exp_state: str) -> None:
         """Adapt camera exposure bias (EV) if supported and enabled.
@@ -269,6 +274,41 @@ class SecurityCamService:
         if self.camera.set_ev(ev):
             self._ev_bias = ev
             self._ev_last_update = now
+
+    def _maybe_adjust_gain(self, exp_state: str) -> None:
+        """Adapt analogue gain if supported and enabled.
+
+        Args:
+          exp_state: 'over' | 'under' | 'normal' | 'off'
+        """
+        if not self.config.GAIN_ADAPT_ENABLE:
+            return
+        if not hasattr(self.camera, "set_gain") or not getattr(self.camera, "supports_gain")():
+            return
+        now = time.time()
+        last = getattr(self, "_gain_last_update", 0.0)
+        if now - last < float(self.config.GAIN_UPDATE_INTERVAL_SEC):
+            return
+
+        g = float(getattr(self, "_gain_value", float(self.config.GAIN_MIN)))
+        if exp_state == "under":
+            g = min(self.config.GAIN_MAX, g + float(self.config.GAIN_STEP))
+        elif exp_state == "over":
+            g = max(self.config.GAIN_MIN, g - float(self.config.GAIN_STEP))
+        elif exp_state == "normal":
+            step = float(self.config.GAIN_RETURN_STEP)
+            if g > 1.0:
+                g = max(1.0, g - step)
+            elif g < 1.0:
+                g = min(1.0, g + step)
+        else:
+            return
+
+        if abs(g - getattr(self, "_gain_value", 0.0)) < 1e-6:
+            return
+        if self.camera.set_gain(g):
+            self._gain_value = g
+            self._gain_last_update = now
 
     def _maybe_save_frame(self, frame: np.ndarray, detections) -> None:
         """Annotate and save the frame if save rate permits."""
