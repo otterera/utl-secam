@@ -79,6 +79,10 @@ class SecurityCamService:
         self._shutter_us: int = int(getattr(self.config, "SHUTTER_BASE_US", 10_000))
         self._shutter_last_update: float = 0.0
         self._manual_exposure: bool = False
+        # NOIR auto-colour (R/B gains) tracking
+        self._colour_r: float = float(getattr(self.config, "NOIR_COLOUR_GAIN_R", 1.5))
+        self._colour_b: float = float(getattr(self.config, "NOIR_COLOUR_GAIN_B", 1.5))
+        self._colour_last_update: float = 0.0
         # Initialize public state mirrors
         self.state.ev_bias = float(self._ev_bias)
         self.state.gain = float(self._gain_value)
@@ -304,6 +308,8 @@ class SecurityCamService:
         self._maybe_adjust_gain(exp_state)
         # Try to adjust shutter time up to 1s if very dark
         self._maybe_adjust_shutter(exp_state)
+        # Try to adjust colour gains for NOIR 'correct' mode if enabled
+        self._maybe_adjust_colour_gains(proc)
         # Mirror current camera controls into state for UI/API
         self.state.ev_bias = float(getattr(self, "_ev_bias", 0.0))
         self.state.gain = float(getattr(self, "_gain_value", 0.0))
@@ -427,6 +433,57 @@ class SecurityCamService:
 
         if changed:
             self._shutter_last_update = now
+
+    def _maybe_adjust_colour_gains(self, frame: np.ndarray) -> None:
+        """Dynamically adjust NOIR colour gains using gray-world estimate.
+
+        Only applies when CAMERA_PROFILE=noir, NOIR_RENDER_MODE=correct,
+        NOIR_AUTO_COLOUR=1, and AWB is disabled.
+        """
+        if self.config.CAMERA_PROFILE != "noir":
+            return
+        if self.config.NOIR_RENDER_MODE != "correct":
+            return
+        if not self.config.NOIR_AUTO_COLOUR:
+            return
+        # Require camera to support ColourGains (Picamera2)
+        if not hasattr(self.camera, "set_ev"):
+            return
+        now = time.time()
+        if now - getattr(self, "_colour_last_update", 0.0) < float(self.config.NOIR_COLOUR_UPDATE_INTERVAL_SEC):
+            return
+        try:
+            # Compute channel means in a central region to avoid borders
+            h, w = frame.shape[:2]
+            y0, y1 = int(h * 0.2), int(h * 0.8)
+            x0, x1 = int(w * 0.2), int(w * 0.8)
+            roi = frame[y0:y1, x0:x1]
+            b_mean = float(roi[:, :, 0].mean()) + 1e-6
+            g_mean = float(roi[:, :, 1].mean()) + 1e-6
+            r_mean = float(roi[:, :, 2].mean()) + 1e-6
+            # Picamera2 ColourGains order is (R, B); target is G/R and G/B
+            target_r = g_mean / r_mean
+            target_b = g_mean / b_mean
+            # EMA smoothing
+            alpha = float(self.config.NOIR_COLOUR_ALPHA)
+            r_gain = (1 - alpha) * float(getattr(self, "_colour_r", target_r)) + alpha * target_r
+            b_gain = (1 - alpha) * float(getattr(self, "_colour_b", target_b)) + alpha * target_b
+            # Clamp to reasonable range
+            r_gain = max(self.config.NOIR_COLOUR_MIN, min(self.config.NOIR_COLOUR_MAX, r_gain))
+            b_gain = max(self.config.NOIR_COLOUR_MIN, min(self.config.NOIR_COLOUR_MAX, b_gain))
+            # Apply
+            if hasattr(self.camera, "picam2") and getattr(self.camera, "picam2") is not None:
+                try:
+                    self.camera.picam2.set_controls({
+                        "AwbEnable": False,
+                        "ColourGains": (float(r_gain), float(b_gain)),
+                    })
+                    self._colour_r, self._colour_b = r_gain, b_gain
+                    self._colour_last_update = now
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     def _maybe_save_frame(self, frame: np.ndarray, detections) -> None:
         """Annotate and save the frame if save rate permits."""

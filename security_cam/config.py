@@ -60,6 +60,14 @@ class Config:
     # Fixed colour gains for Picamera2 when NOIR and correction is desired
     NOIR_COLOUR_GAIN_R = float(os.getenv("SC_NOIR_COLOUR_GAIN_R", 1.5))
     NOIR_COLOUR_GAIN_B = float(os.getenv("SC_NOIR_COLOUR_GAIN_B", 1.5))
+    # Optional: use AWB even for NOIR in color mode (may still be unreliable under IR)
+    NOIR_USE_AWB = os.getenv("SC_NOIR_USE_AWB", "0") == "1"
+    # Optional: auto colour-balance for NOIR using gray-world (disables AWB)
+    NOIR_AUTO_COLOUR = os.getenv("SC_NOIR_AUTO_COLOUR", "1") == "1"
+    NOIR_COLOUR_ALPHA = float(os.getenv("SC_NOIR_COLOUR_ALPHA", 0.2))  # EMA smoothing
+    NOIR_COLOUR_MIN = float(os.getenv("SC_NOIR_COLOUR_MIN", 0.5))
+    NOIR_COLOUR_MAX = float(os.getenv("SC_NOIR_COLOUR_MAX", 3.0))
+    NOIR_COLOUR_UPDATE_INTERVAL_SEC = float(os.getenv("SC_NOIR_COLOUR_UPDATE_INTERVAL_SEC", 2.0))
 
     # Automatic shutter (exposure time) adaptation (Picamera2 only)
     SHUTTER_ADAPT_ENABLE = os.getenv("SC_SHUTTER_ADAPT_ENABLE", "0") == "1"

@@ -107,11 +107,18 @@ class PiCamera2Wrapper(BaseCamera):
         try:
             if Config.CAMERA_PROFILE == "noir":
                 if Config.NOIR_RENDER_MODE == "correct":
-                    # Disable AWB and apply fixed colour gains to reduce color cast
-                    self.picam2.set_controls({
-                        "AwbEnable": False,
-                        "ColourGains": (float(Config.NOIR_COLOUR_GAIN_R), float(Config.NOIR_COLOUR_GAIN_B)),
-                    })
+                    if Config.NOIR_USE_AWB:
+                        # Let AWB attempt correction (works better under visible light)
+                        self.picam2.set_controls({"AwbEnable": True})
+                    elif Config.NOIR_AUTO_COLOUR:
+                        # We'll drive ColourGains dynamically in the service
+                        self.picam2.set_controls({"AwbEnable": False})
+                    else:
+                        # Apply fixed gains to reduce cast
+                        self.picam2.set_controls({
+                            "AwbEnable": False,
+                            "ColourGains": (float(Config.NOIR_COLOUR_GAIN_R), float(Config.NOIR_COLOUR_GAIN_B)),
+                        })
                 else:
                     # Prefer grayscale rendering; keep AWB off to avoid odd shifts
                     self.picam2.set_controls({"AwbEnable": False})

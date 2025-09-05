@@ -67,7 +67,14 @@ Tune behavior using environment variables (defaults shown):
 - `SC_CAMERA_PROFILE=standard` or `noir`: Select standard color camera or NOIR (infrared)
 - NOIR options:
   - `SC_NOIR_RENDER_MODE=mono` (recommended under IR) or `correct`
-  - If `correct`: `SC_NOIR_COLOUR_GAIN_R=1.5`, `SC_NOIR_COLOUR_GAIN_B=1.5` (tune to reduce color cast)
+  - If `correct`:
+    - Use AWB: `SC_NOIR_USE_AWB=1` (better under visible light, not IR), or
+    - Auto colour gains (default):
+      - `SC_NOIR_AUTO_COLOUR=1`
+      - `SC_NOIR_COLOUR_ALPHA=0.2` (smoothing),
+      - `SC_NOIR_COLOUR_MIN=0.5` / `SC_NOIR_COLOUR_MAX=3.0`,
+      - `SC_NOIR_COLOUR_UPDATE_INTERVAL_SEC=2.0`
+    - Fixed gains (fallback): `SC_NOIR_COLOUR_GAIN_R=1.5`, `SC_NOIR_COLOUR_GAIN_B=1.5`
 - Adaptive sensitivity:
   - `SC_ADAPTIVE_SENSITIVITY=1`: Enable exposure-aware tuning
   - `SC_EXP_BRIGHT_MEAN=200` / `SC_EXP_DARK_MEAN=40`: Mean brightness cutoffs
