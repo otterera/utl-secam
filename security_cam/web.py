@@ -42,6 +42,7 @@ def create_app(service: SecurityCamService) -> flask.Flask:
             gain=getattr(st, "gain", 0.0),
             shutter_ms=int(getattr(st, "shutter_us", 0) / 1000),
             latest_files=[os.path.basename(p) for p in latest_files],
+            save_dir=Config.SAVE_DIR,
             ts=int(time.time()),
         )
         return html
@@ -178,6 +179,7 @@ _INDEX_TEMPLATE = """
         <div class="meta">Saved: {{saved_count}} &nbsp; | &nbsp; Frames: {{total_frames}}</div>
       </div>
       <h3>Recent Captures</h3>
+      <div class="meta">From: {{save_dir}}</div>
       <div class="grid">
         {% for f in latest_files %}
           <div class="card"><img src="{{ url_for('captures', filename=f) }}?ts={{ts}}" alt="{{f}}" /></div>
