@@ -1,3 +1,5 @@
+"""Background capture/detection service for the security camera app."""
+
 import os
 import threading
 import time
@@ -15,6 +17,7 @@ from .schedule import DailySchedule
 
 @dataclass
 class ServiceState:
+    """Observable service state used by the web API and dashboard."""
     detecting: bool = False
     last_detection_ts: float = 0.0
     saved_images_count: int = 0
@@ -29,7 +32,10 @@ class ServiceState:
 
 
 class SecurityCamService:
+    """Owns the camera loop, detection cadence, and image saving."""
+
     def __init__(self) -> None:
+        """Initialize components, state, and adaptive tuning caches."""
         self.config = Config
         self.camera: BaseCamera = make_camera()
         self.detector = HumanDetector()
@@ -54,25 +60,30 @@ class SecurityCamService:
 
     # Public API
     def start(self) -> None:
+        """Start background thread (camera starts inside thread)."""
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
 
     def stop(self) -> None:
+        """Request shutdown and release camera resources."""
         self._stop.set()
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=2)
         self.camera.stop()
 
     def get_latest_frame(self) -> Optional[np.ndarray]:
+        """Return a copy of the most recent frame, or None."""
         with self._frame_lock:
             if self._latest_frame is None:
                 return None
             return self._latest_frame.copy()
 
     def get_status(self) -> ServiceState:
+        """Return the current service state snapshot."""
         return self.state
 
     def list_latest_images(self, limit: int) -> List[str]:
+        """List newest saved images up to `limit` (absolute paths)."""
         try:
             files = [
                 os.path.join(self.config.SAVE_DIR, f)
@@ -86,6 +97,7 @@ class SecurityCamService:
 
     # Internal
     def _run(self) -> None:
+        """Worker loop: read frames, adapt, detect, save, repeat."""
         frame_idx = 0
         interval = 1.0 / max(1, self.config.CAPTURE_FPS)
         # Initialize camera here so Flask can start even if camera blocks
@@ -118,7 +130,7 @@ class SecurityCamService:
             self.state.detect_stride = int(self._detect_stride_dyn)
             self.state.hit_threshold = float(self._hit_threshold_dyn)
 
-            # detection throttling
+            # detection throttling (cadence may be adapted by exposure)
             if frame_idx % max(1, int(self._detect_stride_dyn)) == 0:
                 detections = []
                 if self.state.armed:
@@ -143,10 +155,11 @@ class SecurityCamService:
                         self.state.detecting = False
 
             frame_idx += 1
-            # Simple pacing
+            # Simple pacing to cap CPU
             time.sleep(interval)
 
     def _update_exposure_and_adapt(self, frame: np.ndarray) -> None:
+        """Update exposure metrics and adjust sensitivity/cadence accordingly."""
         if not self.config.ADAPTIVE_SENSITIVITY:
             self.state.exposure_state = "off"
             self._detect_stride_dyn = self._detect_stride_base
@@ -193,6 +206,7 @@ class SecurityCamService:
             self._detect_stride_dyn = self._detect_stride_base
 
     def _maybe_save_frame(self, frame: np.ndarray, detections) -> None:
+        """Annotate and save the frame if save rate permits."""
         now = time.time()
         if now - self._last_saved_ts < self.config.SAVE_INTERVAL_SEC:
             return
@@ -213,7 +227,7 @@ class SecurityCamService:
             pass
 
     def _enforce_retention(self) -> None:
-        # Keep only newest MAX_SAVED_IMAGES
+        """Keep only the newest MAX_SAVED_IMAGES by deleting oldest files."""
         try:
             files = [
                 os.path.join(self.config.SAVE_DIR, f)

@@ -1,18 +1,29 @@
-import os
-import time
+"""Flask web application for the security camera dashboard and API."""
 
-import cv2
-import flask
+import os  # For file path operations
+import time  # For timestamps and simple cache control
 
-from .config import Config
-from .service import SecurityCamService
+import cv2  # For JPEG encoding
+import flask  # Web server and templating
+
+from .config import Config  # App configuration
+from .service import SecurityCamService  # Service providing frames and state
 
 
 def create_app(service: SecurityCamService) -> flask.Flask:
+    """Create and configure the Flask application.
+
+    Args:
+      service: Running `SecurityCamService` to fetch frames and state from.
+
+    Returns:
+      A Flask app instance with routes for dashboard, images, and API.
+    """
     app = flask.Flask(__name__)
 
     @app.route("/")
     def index():
+        """Render the main dashboard page."""
         st = service.get_status()
         alert_active = (time.time() - st.last_detection_ts) <= Config.ALERT_COOLDOWN_SEC
         latest_files = service.list_latest_images(Config.GALLERY_LATEST_COUNT)
@@ -31,6 +42,7 @@ def create_app(service: SecurityCamService) -> flask.Flask:
 
     @app.route("/latest.jpg")
     def latest_jpg():
+        """Serve the most recent frame as a JPEG image."""
         frame = service.get_latest_frame()
         if frame is None:
             return ("No frame yet", 503)
@@ -41,6 +53,7 @@ def create_app(service: SecurityCamService) -> flask.Flask:
 
     @app.route("/captures/<path:filename>")
     def captures(filename: str):
+        """Serve a saved capture by filename."""
         path = os.path.join(Config.SAVE_DIR, filename)
         if not os.path.isfile(path):
             return ("Not found", 404)
@@ -48,6 +61,7 @@ def create_app(service: SecurityCamService) -> flask.Flask:
 
     @app.route("/api/state")
     def api_state():
+        """Return the current service state as JSON."""
         st = service.get_status()
         return {
             "detecting": st.detecting,
@@ -65,6 +79,7 @@ def create_app(service: SecurityCamService) -> flask.Flask:
 
     @app.route("/stream.mjpg")
     def stream_mjpg():
+        """Provide a multipart/x-mixed-replace MJPEG live stream."""
         def gen():
             boundary = b"--frame"
             while True:

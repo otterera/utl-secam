@@ -1,106 +1,153 @@
-import time
-from typing import Optional, Tuple
+"""Camera backends and factory for the security camera app.
 
-import numpy as np
+Provides a minimal interface to either Picamera2 (CSI cameras) or OpenCV’s
+VideoCapture (V4L2 devices like USB webcams). Frames are returned as BGR
+NumPy arrays compatible with OpenCV.
+"""
 
-from .config import Config
+import time  # Sleep on read failures to reduce busy looping
+from typing import Optional, Tuple  # Type hints for clarity
+
+import numpy as np  # Frame arrays
+
+from .config import Config  # Global configuration
 
 
 class BaseCamera:
+    """Abstract camera interface returning BGR frames.
+
+    Subclasses must implement `start()`, `read()`, and `stop()`.
+    """
+
     def start(self) -> None:
+        """Initialize and start the camera stream."""
         raise NotImplementedError
 
     def read(self) -> Optional[np.ndarray]:
-        """Return a BGR frame or None if unavailable."""
+        """Read a single BGR frame.
+
+        Returns:
+          A NumPy array in BGR order, or None if a frame is not available.
+        """
         raise NotImplementedError
 
     def stop(self) -> None:
+        """Stop and release camera resources."""
         pass
 
 
 class PiCamera2Wrapper(BaseCamera):
+    """PiCamera2-based camera backend for CSI-connected camera modules."""
+
     def __init__(self, size: Tuple[int, int]) -> None:
-        self.size = size
-        self.picam2 = None
-        self._started = False
+        """Create a camera with a given frame size.
+
+        Args:
+          size: `(width, height)` capture resolution.
+        """
+        self.size = size  # Desired capture size
+        self.picam2 = None  # Will hold Picamera2 instance
+        self._started = False  # Tracks start state
 
     def start(self) -> None:
-        from picamera2 import Picamera2
+        """Configure and start Picamera2 streaming."""
+        from picamera2 import Picamera2  # Imported lazily to avoid hard dependency
 
-        self.picam2 = Picamera2()
-        w, h = self.size
+        self.picam2 = Picamera2()  # Create camera instance
+        w, h = self.size  # Unpack desired width and height
         config = self.picam2.create_video_configuration(
-            main={"size": (w, h), "format": "RGB888"}
+            main={"size": (w, h), "format": "RGB888"}  # Request RGB frames
         )
-        self.picam2.configure(config)
-        self.picam2.start()
-        self._started = True
+        self.picam2.configure(config)  # Apply configuration
+        self.picam2.start()  # Start the camera
+        self._started = True  # Mark as started
 
     def read(self) -> Optional[np.ndarray]:
-        if not self._started:
+        """Capture a frame and return it in BGR order."""
+        if not self._started:  # Guard if not started yet
             return None
-        # picamera2 returns RGB; convert to BGR for OpenCV
-        arr = self.picam2.capture_array()
-        if arr is None:
+        # Picamera2 returns RGB; convert to OpenCV’s expected BGR order
+        arr = self.picam2.capture_array()  # Get the latest frame as an array
+        if arr is None:  # If no frame is available yet
             return None
-        return arr[:, :, ::-1].copy()
+        return arr[:, :, ::-1].copy()  # Reverse channels RGB->BGR
 
     def stop(self) -> None:
+        """Stop streaming and release resources."""
         try:
-            if self.picam2:
-                self.picam2.stop()
+            if self.picam2:  # If a camera instance exists
+                self.picam2.stop()  # Stop streaming
         except Exception:
+            # Ignore errors during shutdown to keep cleanup robust
             pass
-        self._started = False
+        self._started = False  # Mark as stopped
 
 
 class Cv2V4L2Camera(BaseCamera):
-    def __init__(self, index: int, size: Tuple[int, int], fps: int) -> None:
-        import cv2
+    """OpenCV VideoCapture backend for V4L2 devices (e.g., USB webcams)."""
 
-        self.cv2 = cv2
-        self.index = index
-        self.size = size
-        self.fps = fps
-        self.cap = None
+    def __init__(self, index: int, size: Tuple[int, int], fps: int) -> None:
+        """Create a V4L2 camera.
+
+        Args:
+          index: V4L2 device index (e.g., 0 for /dev/video0).
+          size: `(width, height)` capture resolution.
+          fps: Requested frames per second.
+        """
+        import cv2  # Imported here to avoid global import cost if unused
+
+        self.cv2 = cv2  # Save module reference for property constants
+        self.index = index  # Device index
+        self.size = size  # Desired capture size
+        self.fps = fps  # Target FPS
+        self.cap = None  # Will hold cv2.VideoCapture instance
 
     def start(self) -> None:
-        self.cap = self.cv2.VideoCapture(self.index)
-        w, h = self.size
-        self.cap.set(self.cv2.CAP_PROP_FRAME_WIDTH, w)
-        self.cap.set(self.cv2.CAP_PROP_FRAME_HEIGHT, h)
-        self.cap.set(self.cv2.CAP_PROP_FPS, self.fps)
+        """Open the V4L2 device and set basic properties."""
+        self.cap = self.cv2.VideoCapture(self.index)  # Open device
+        w, h = self.size  # Unpack target size
+        self.cap.set(self.cv2.CAP_PROP_FRAME_WIDTH, w)  # Set width
+        self.cap.set(self.cv2.CAP_PROP_FRAME_HEIGHT, h)  # Set height
+        self.cap.set(self.cv2.CAP_PROP_FPS, self.fps)  # Set FPS
 
     def read(self) -> Optional[np.ndarray]:
-        if self.cap is None:
+        """Grab a frame from the V4L2 device."""
+        if self.cap is None:  # Not started
             return None
-        ok, frame = self.cap.read()
-        if not ok:
+        ok, frame = self.cap.read()  # Try to read a frame
+        if not ok:  # If read failed, back off briefly
             time.sleep(0.01)
             return None
-        return frame
+        return frame  # Frame is already BGR
 
     def stop(self) -> None:
+        """Release the V4L2 device."""
         try:
-            if self.cap is not None:
-                self.cap.release()
+            if self.cap is not None:  # If opened
+                self.cap.release()  # Release device
         except Exception:
+            # Suppress release errors during shutdown
             pass
 
 
 def make_camera() -> BaseCamera:
-    size = (Config.FRAME_WIDTH, Config.FRAME_HEIGHT)
-    backend = Config.CAMERA_BACKEND
-    if backend == "picamera2":
+    """Factory to create the appropriate camera backend based on config.
+
+    Returns:
+      An instance of `BaseCamera` using either Picamera2 or V4L2.
+    """
+    size = (Config.FRAME_WIDTH, Config.FRAME_HEIGHT)  # Desired capture size
+    backend = Config.CAMERA_BACKEND  # Requested backend
+    if backend == "picamera2":  # Force Picamera2
         return PiCamera2Wrapper(size=size)
-    if backend == "v4l2":
+    if backend == "v4l2":  # Force V4L2
         return Cv2V4L2Camera(index=0, size=size, fps=Config.CAPTURE_FPS)
 
-    # auto: try picamera2, then v4l2
+    # Auto: try Picamera2 first, fall back to V4L2
     try:
-        import importlib
+        import importlib  # Dynamic import to test availability
 
-        importlib.import_module("picamera2")
+        importlib.import_module("picamera2")  # Raises if unavailable
         return PiCamera2Wrapper(size=size)
     except Exception:
         return Cv2V4L2Camera(index=0, size=size, fps=Config.CAPTURE_FPS)

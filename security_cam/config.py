@@ -1,44 +1,57 @@
-import os
+"""Global configuration for the security camera application.
+
+This module exposes configuration constants via the `Config` class. All values
+are read from environment variables with sensible Raspberry Pi defaults.
+"""
+
+import os  # Standard library for environment and filesystem helpers
 
 
 class Config:
+    """Application configuration sourced from environment variables.
+
+    This class provides class attributes so other modules can import settings as
+    constants (e.g., `from security_cam.config import Config`). To override a
+    setting, define the corresponding environment variable before launching the
+    application.
+    """
     # Camera
-    FRAME_WIDTH = int(os.getenv("SC_FRAME_WIDTH", 320))
-    FRAME_HEIGHT = int(os.getenv("SC_FRAME_HEIGHT", 240))
-    CAPTURE_FPS = int(os.getenv("SC_CAPTURE_FPS", 1))  # lower for Pi 3B CPU
-    CAMERA_BACKEND = os.getenv("SC_CAMERA_BACKEND", "auto").strip().lower()  # auto|picamera2|v4l2
+    FRAME_WIDTH = int(os.getenv("SC_FRAME_WIDTH", 320))  # Capture width in pixels
+    FRAME_HEIGHT = int(os.getenv("SC_FRAME_HEIGHT", 240))  # Capture height in pixels
+    CAPTURE_FPS = int(os.getenv("SC_CAPTURE_FPS", 1))  # Target FPS (kept low for Pi 3B CPU)
+    CAMERA_BACKEND = os.getenv("SC_CAMERA_BACKEND", "auto").strip().lower()  # Camera backend: auto|picamera2|v4l2
 
     # Detection
-    DETECT_EVERY_N_FRAMES = int(os.getenv("SC_DETECT_EVERY_N_FRAMES", 2))
-    DETECTOR_MIN_WIDTH = int(os.getenv("SC_DETECTOR_MIN_WIDTH", 48))
-    DETECTOR_MIN_HEIGHT = int(os.getenv("SC_DETECTOR_MIN_HEIGHT", 96))
-    DETECTOR_STRIDE = int(os.getenv("SC_DETECTOR_STRIDE", 8))
-    DETECTOR_SCALE = float(os.getenv("SC_DETECTOR_SCALE", 1.05))
-    DETECTOR_HIT_THRESHOLD = float(os.getenv("SC_DETECTOR_HIT_THRESHOLD", 0))
+    DETECT_EVERY_N_FRAMES = int(os.getenv("SC_DETECT_EVERY_N_FRAMES", 2))  # Run detector every N frames
+    DETECTOR_MIN_WIDTH = int(os.getenv("SC_DETECTOR_MIN_WIDTH", 48))  # Minimum person width
+    DETECTOR_MIN_HEIGHT = int(os.getenv("SC_DETECTOR_MIN_HEIGHT", 96))  # Minimum person height
+    DETECTOR_STRIDE = int(os.getenv("SC_DETECTOR_STRIDE", 8))  # HOG winStride step size
+    DETECTOR_SCALE = float(os.getenv("SC_DETECTOR_SCALE", 1.05))  # HOG pyramid scale factor
+    DETECTOR_HIT_THRESHOLD = float(os.getenv("SC_DETECTOR_HIT_THRESHOLD", 0))  # HOG SVM hit threshold
 
     # Saving
-    SAVE_DIR = os.getenv("SC_SAVE_DIR", os.path.join("data", "captures"))
-    SAVE_ON_DETECT = os.getenv("SC_SAVE_ON_DETECT", "1") == "1"
-    SAVE_INTERVAL_SEC = float(os.getenv("SC_SAVE_INTERVAL_SEC", 1.0))
-    MAX_SAVED_IMAGES = int(os.getenv("SC_MAX_SAVED_IMAGES", 2000))
+    SAVE_DIR = os.getenv("SC_SAVE_DIR", os.path.join("data", "captures"))  # Capture output directory
+    SAVE_ON_DETECT = os.getenv("SC_SAVE_ON_DETECT", "1") == "1"  # Save when a detection occurs
+    SAVE_INTERVAL_SEC = float(os.getenv("SC_SAVE_INTERVAL_SEC", 1.0))  # Minimum seconds between saves
+    MAX_SAVED_IMAGES = int(os.getenv("SC_MAX_SAVED_IMAGES", 2000))  # Retention limit for saved images
 
     # Dashboard
-    ALERT_COOLDOWN_SEC = float(os.getenv("SC_ALERT_COOLDOWN_SEC", 10.0))
-    GALLERY_LATEST_COUNT = int(os.getenv("SC_GALLERY_LATEST_COUNT", 12))
-    HOST = os.getenv("SC_HOST", "0.0.0.0")
-    PORT = int(os.getenv("SC_PORT", 8000))
-    DEBUG = os.getenv("SC_DEBUG", "0") == "1"
+    ALERT_COOLDOWN_SEC = float(os.getenv("SC_ALERT_COOLDOWN_SEC", 10.0))  # Keep alert banner visible this long
+    GALLERY_LATEST_COUNT = int(os.getenv("SC_GALLERY_LATEST_COUNT", 12))  # Recent images shown on dashboard
+    HOST = os.getenv("SC_HOST", "0.0.0.0")  # Flask bind host
+    PORT = int(os.getenv("SC_PORT", 8000))  # Flask bind port
+    DEBUG = os.getenv("SC_DEBUG", "0") == "1"  # Flask debug switch
 
     # Schedule (comma-separated daily windows, e.g., "22:00-06:00,12:30-13:30").
     # Empty means always armed.
-    ACTIVE_WINDOWS = os.getenv("SC_ACTIVE_WINDOWS", "").strip()
+    ACTIVE_WINDOWS = os.getenv("SC_ACTIVE_WINDOWS", "").strip()  # Daily arming windows
 
     # Adaptive sensitivity based on exposure (brightness) analysis
-    ADAPTIVE_SENSITIVITY = os.getenv("SC_ADAPTIVE_SENSITIVITY", "1") == "1"
-    EXP_BRIGHT_MEAN = float(os.getenv("SC_EXP_BRIGHT_MEAN", 200))
-    EXP_DARK_MEAN = float(os.getenv("SC_EXP_DARK_MEAN", 40))
-    EXP_HIGH_CLIP_FRAC = float(os.getenv("SC_EXP_HIGH_CLIP_FRAC", 0.05))  # >= 255-5
-    EXP_LOW_CLIP_FRAC = float(os.getenv("SC_EXP_LOW_CLIP_FRAC", 0.05))   # <= 5
-    ADAPT_HIT_THRESHOLD_DELTA = float(os.getenv("SC_ADAPT_HIT_THRESHOLD_DELTA", 0.5))
-    ADAPT_MIN_SIZE_SCALE = float(os.getenv("SC_ADAPT_MIN_SIZE_SCALE", 1.2))
-    ADAPT_DETECT_STRIDE_SCALE = float(os.getenv("SC_ADAPT_DETECT_STRIDE_SCALE", 2.0))
+    ADAPTIVE_SENSITIVITY = os.getenv("SC_ADAPTIVE_SENSITIVITY", "1") == "1"  # Toggle adaptive behavior
+    EXP_BRIGHT_MEAN = float(os.getenv("SC_EXP_BRIGHT_MEAN", 200))  # Over-exposure mean threshold
+    EXP_DARK_MEAN = float(os.getenv("SC_EXP_DARK_MEAN", 40))  # Under-exposure mean threshold
+    EXP_HIGH_CLIP_FRAC = float(os.getenv("SC_EXP_HIGH_CLIP_FRAC", 0.05))  # Fraction near max intensity
+    EXP_LOW_CLIP_FRAC = float(os.getenv("SC_EXP_LOW_CLIP_FRAC", 0.05))   # Fraction near min intensity
+    ADAPT_HIT_THRESHOLD_DELTA = float(os.getenv("SC_ADAPT_HIT_THRESHOLD_DELTA", 0.5))  # Extra HOG threshold
+    ADAPT_MIN_SIZE_SCALE = float(os.getenv("SC_ADAPT_MIN_SIZE_SCALE", 1.2))  # Increase min person size
+    ADAPT_DETECT_STRIDE_SCALE = float(os.getenv("SC_ADAPT_DETECT_STRIDE_SCALE", 2.0))  # Slow detection cadence
