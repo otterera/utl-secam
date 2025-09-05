@@ -35,6 +35,7 @@ def create_app(service: SecurityCamService) -> flask.Flask:
             saved_count=st.saved_images_count,
             total_frames=st.total_frames,
             armed=st.armed,
+            exposure_state=st.exposure_state,
             latest_files=[os.path.basename(p) for p in latest_files],
             ts=int(time.time()),
         )
@@ -113,6 +114,10 @@ _INDEX_TEMPLATE = """
     .arm { padding: 6px 10px; border-radius: 6px; font-weight: 600; font-size: 12px; }
     .arm.on { background: #144d14; color: #bff5bf; }
     .arm.off { background: #3a3a3a; color: #bbb; }
+    .exp { padding: 6px 10px; border-radius: 6px; font-weight: 600; font-size: 12px; }
+    .exp.normal { background: #2a2a2a; color: #bbb; }
+    .exp.over { background: #b00020; color: #fff; }
+    .exp.under { background: #0b3d91; color: #dbe9ff; }
     main { padding: 16px; }
     .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
     .card { background: #1b1b1b; padding: 8px; border-radius: 8px; }
@@ -131,6 +136,13 @@ _INDEX_TEMPLATE = """
           <span class="arm on">Armed</span>
         {% else %}
           <span class="arm off">Disarmed</span>
+        {% endif %}
+        {% if exposure_state == 'over' %}
+          <span class="exp over">Exposure: Over</span>
+        {% elif exposure_state == 'under' %}
+          <span class="exp under">Exposure: Under</span>
+        {% elif exposure_state == 'normal' %}
+          <span class="exp normal">Exposure: Normal</span>
         {% endif %}
       </div>
       {% if alert_active %}
