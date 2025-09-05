@@ -127,3 +127,14 @@ class Config:
     FACE_SCALE_FACTOR = float(os.getenv("SC_FACE_SCALE_FACTOR", 1.12))
     FACE_MIN_NEIGHBORS = int(os.getenv("SC_FACE_MIN_NEIGHBORS", 3))
     FACE_MIN_SIZE = int(os.getenv("SC_FACE_MIN_SIZE", 24))  # min face size in pixels
+    # Alternative face backends: haar (default), lbp, dnn (if model provided)
+    FACE_BACKEND = os.getenv("SC_FACE_BACKEND", "haar").strip().lower()  # haar|lbp|dnn
+    # DNN model (optional): set both to enable
+    FACE_DNN_PROTO = os.getenv("SC_FACE_DNN_PROTO", "").strip()
+    FACE_DNN_MODEL = os.getenv("SC_FACE_DNN_MODEL", "").strip()
+    FACE_DNN_CONF_THRESH = float(os.getenv("SC_FACE_DNN_CONF_THRESH", 0.6))
+    # Preprocessing: apply CLAHE to grayscale before Haar/LBP (helps in dim/IR)
+    FACE_USE_CLAHE = os.getenv("SC_FACE_USE_CLAHE", "1") == "1"
+    FACE_MIN_SIZE_FRAC = float(os.getenv("SC_FACE_MIN_SIZE_FRAC", 0.08))  # fraction of min(frame_w,frame_h)
+    # Debounce: require N consecutive frames with faces before confirming
+    FACE_CONSEC_FRAMES = int(os.getenv("SC_FACE_CONSEC_FRAMES", 2))

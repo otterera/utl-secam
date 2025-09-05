@@ -139,46 +139,100 @@ class HumanDetector:
         return detections  # Final detections
 
 
-class FaceDetector:
-    """Haar cascade face detector as a complementary signal."""
+class _CascadeFaceDetector:
+    """Base for Haar/LBP detectors with shared loader and preprocessing."""
 
-    def __init__(self) -> None:
-        """Load OpenCV Haar cascade for frontal faces."""
+    def __init__(self, filenames: List[str]) -> None:
         self.cascade = None
-        # Try several candidate locations; load only if the file exists
         candidates = []
         try:
-            candidates.append(os.path.join(cv2.data.haarcascades, "haarcascade_frontalface_default.xml"))  # type: ignore[attr-defined]
+            candidates.extend([os.path.join(cv2.data.haarcascades, f) for f in filenames])  # type: ignore[attr-defined]
         except Exception:
             pass
         candidates.extend([
-            "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
-            "/usr/share/opencv/haarcascades/haarcascade_frontalface_default.xml",
-            "/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_default.xml",
+            "/usr/share/opencv4/haarcascades/",
+            "/usr/share/opencv/haarcascades/",
+            "/usr/local/share/opencv4/haarcascades/",
         ])
-        for path in candidates:
+        files: List[str] = []
+        for base in candidates:
+            if base.endswith(".xml"):
+                files.append(base)
+            else:
+                files.extend([os.path.join(base, f) for f in filenames])
+        for path in files:
             if os.path.exists(path):
                 c = cv2.CascadeClassifier(path)
                 if not c.empty():
                     self.cascade = c
                     break
 
+    def _preproc(self, frame_bgr: np.ndarray) -> np.ndarray:
+        gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
+        if Config.FACE_USE_CLAHE:
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            gray = clahe.apply(gray)
+        return gray
+
     def detect(self, frame_bgr: np.ndarray) -> List[Detection]:
-        """Detect frontal faces and return as Detection list."""
         if self.cascade is None:
             return []
-        gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
+        gray = self._preproc(frame_bgr)
+        # Dynamic min size based on frame size
+        h, w = gray.shape[:2]
+        min_side = int(min(h, w) * max(0.0, min(1.0, Config.FACE_MIN_SIZE_FRAC)))
+        min_side = max(min_side, Config.FACE_MIN_SIZE)
         faces = self.cascade.detectMultiScale(
             gray,
             scaleFactor=Config.FACE_SCALE_FACTOR,
             minNeighbors=Config.FACE_MIN_NEIGHBORS,
             flags=cv2.CASCADE_SCALE_IMAGE,
-            minSize=(Config.FACE_MIN_SIZE, Config.FACE_MIN_SIZE),
+            minSize=(min_side, min_side),
         )
-        detections: List[Detection] = []
-        for (x, y, w, h) in faces:
-            detections.append(Detection((int(x), int(y), int(w), int(h)), 1.0, "face"))
-        return detections
+        return [Detection((int(x), int(y), int(w), int(h)), 1.0, "face") for (x, y, w, h) in faces]
+
+
+class HaarFaceDetector(_CascadeFaceDetector):
+    def __init__(self) -> None:
+        super().__init__(["haarcascade_frontalface_default.xml"]) 
+
+
+class LbpFaceDetector(_CascadeFaceDetector):
+    def __init__(self) -> None:
+        super().__init__(["lbpcascade_frontalface.xml"]) 
+
+
+class DnnFaceDetector:
+    def __init__(self, proto: str, model: str) -> None:
+        self.net = None
+        try:
+            if os.path.exists(proto) and os.path.exists(model):
+                self.net = cv2.dnn.readNetFromCaffe(proto, model)
+        except Exception:
+            self.net = None
+
+    def detect(self, frame_bgr: np.ndarray) -> List[Detection]:
+        if self.net is None:
+            return []
+        (h, w) = frame_bgr.shape[:2]
+        blob = cv2.dnn.blobFromImage(cv2.resize(frame_bgr, (300, 300)), 1.0, (300, 300), (104.0, 177.0, 123.0))
+        self.net.setInput(blob)
+        detections = self.net.forward()
+        out: List[Detection] = []
+        for i in range(0, detections.shape[2]):
+            conf = float(detections[0, 0, i, 2])
+            if conf < Config.FACE_DNN_CONF_THRESH:
+                continue
+            box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+            (x1, y1, x2, y2) = box.astype("int")
+            x = max(0, x1)
+            y = max(0, y1)
+            w0 = max(0, x2 - x1)
+            h0 = max(0, y2 - y1)
+            if w0 <= 0 or h0 <= 0:
+                continue
+            out.append(Detection((int(x), int(y), int(w0), int(h0)), conf, "face"))
+        return out
 
 
 class MultiHumanDetector:
@@ -190,7 +244,15 @@ class MultiHumanDetector:
 
     def __init__(self) -> None:
         self.person = HumanDetector()
-        self.face = FaceDetector() if Config.USE_FACE_DETECT else None
+        self.face = None
+        if Config.USE_FACE_DETECT:
+            backend = Config.FACE_BACKEND
+            if backend == "lbp":
+                self.face = LbpFaceDetector()
+            elif backend == "dnn" and Config.FACE_DNN_PROTO and Config.FACE_DNN_MODEL:
+                self.face = DnnFaceDetector(Config.FACE_DNN_PROTO, Config.FACE_DNN_MODEL)
+            else:
+                self.face = HaarFaceDetector()
 
     def detect(
         self,

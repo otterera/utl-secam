@@ -83,6 +83,8 @@ class SecurityCamService:
         self._colour_r: float = float(getattr(self.config, "NOIR_COLOUR_GAIN_R", 1.5))
         self._colour_b: float = float(getattr(self.config, "NOIR_COLOUR_GAIN_B", 1.5))
         self._colour_last_update: float = 0.0
+        # Face detection debounce
+        self._face_consec_hits: int = 0
         # Initialize public state mirrors
         self.state.ev_bias = float(self._ev_bias)
         self.state.gain = float(self._gain_value)
@@ -215,8 +217,17 @@ class SecurityCamService:
                         self.state.person_count = persons
                         self.state.face_count = faces
                         self.state.last_kinds = kinds
-                        if self.config.SAVE_ON_DETECT:
-                            self._maybe_save_frame(proc, detections)
+                        # Debounce: require consecutive frames for face-only detections
+                        if faces and not persons and self.config.FACE_CONSEC_FRAMES > 1:
+                            self._face_consec_hits += 1
+                            if self._face_consec_hits >= self.config.FACE_CONSEC_FRAMES:
+                                if self.config.SAVE_ON_DETECT:
+                                    self._maybe_save_frame(proc, detections)
+                                self._face_consec_hits = 0
+                        else:
+                            self._face_consec_hits = 0
+                            if self.config.SAVE_ON_DETECT:
+                                self._maybe_save_frame(proc, detections)
                 # cooldown / idle state
                 if not detections:
                     if time.time() - self.state.last_detection_ts > self.config.ALERT_COOLDOWN_SEC:
@@ -224,6 +235,7 @@ class SecurityCamService:
                         self.state.person_count = 0
                         self.state.face_count = 0
                         self.state.last_kinds = []
+                        self._face_consec_hits = 0
 
             frame_idx += 1
             # Simple pacing to cap CPU
