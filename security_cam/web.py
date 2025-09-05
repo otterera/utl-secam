@@ -59,11 +59,8 @@ def create_app(service: SecurityCamService) -> flask.Flask:
 
     @app.route("/captures/<path:filename>")
     def captures(filename: str):
-        """Serve a saved capture by filename."""
-        path = os.path.join(Config.SAVE_DIR, filename)
-        if not os.path.isfile(path):
-            return ("Not found", 404)
-        return flask.send_file(path, mimetype="image/jpeg")
+        """Serve a saved capture by filename from the configured directory."""
+        return flask.send_from_directory(Config.SAVE_DIR, filename, mimetype="image/jpeg")
 
     @app.route("/api/state")
     def api_state():
@@ -183,7 +180,7 @@ _INDEX_TEMPLATE = """
       <h3>Recent Captures</h3>
       <div class="grid">
         {% for f in latest_files %}
-          <div class="card"><img src="/captures/{{f}}" alt="{{f}}" /></div>
+          <div class="card"><img src="{{ url_for('captures', filename=f) }}?ts={{ts}}" alt="{{f}}" /></div>
         {% else %}
           <div class="meta">No captures yet.</div>
         {% endfor %}
