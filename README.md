@@ -72,9 +72,9 @@ Tune behavior using environment variables (defaults shown):
   - `SC_ADAPT_HIT_THRESHOLD_DELTA=0.5`: Extra HOG hit threshold when exposure is poor
   - `SC_ADAPT_MIN_SIZE_SCALE=1.2`: Scale min person size under poor exposure
   - `SC_ADAPT_DETECT_STRIDE_SCALE=2.0`: Multiply detection cadence under poor exposure
- - Optional frame enhancement (applied when exposure is poor):
-   - `SC_ENHANCE_ON_UNDER=1`, `SC_ENHANCE_UNDER_ALPHA=1.5`, `SC_ENHANCE_UNDER_BETA=20`
-   - `SC_ENHANCE_ON_OVER=1`, `SC_ENHANCE_OVER_ALPHA=0.85`, `SC_ENHANCE_OVER_BETA=-10`
+- Optional frame enhancement (applied when exposure is poor):
+  - `SC_ENHANCE_ON_UNDER=1`, `SC_ENHANCE_UNDER_ALPHA=1.5`, `SC_ENHANCE_UNDER_BETA=20`
+  - `SC_ENHANCE_ON_OVER=1`, `SC_ENHANCE_OVER_ALPHA=0.85`, `SC_ENHANCE_OVER_BETA=-10`
 - Camera-side auto-exposure EV-bias (Picamera2 only):
   - `SC_AE_EV_ADAPT_ENABLE=1`
   - `SC_AE_EV_MIN=-2.0` / `SC_AE_EV_MAX=2.0`: EV clamp
@@ -84,9 +84,16 @@ Tune behavior using environment variables (defaults shown):
  - Camera analogue gain adaptation (Picamera2 only):
    - `SC_GAIN_ADAPT_ENABLE=1`
    - `SC_GAIN_MIN=1.0` / `SC_GAIN_MAX=8.0`: Gain clamp
-   - `SC_GAIN_STEP=0.5`: Step toward brighter/darker when under/over
-   - `SC_GAIN_RETURN_STEP=0.25`: Step back toward 1.0 when normal
-   - `SC_GAIN_UPDATE_INTERVAL_SEC=1.0`: Min seconds between gain changes
+  - `SC_GAIN_STEP=0.5`: Step toward brighter/darker when under/over
+  - `SC_GAIN_RETURN_STEP=0.25`: Step back toward 1.0 when normal
+  - `SC_GAIN_UPDATE_INTERVAL_SEC=1.0`: Min seconds between gain changes
+ - Shutter (exposure time) adaptation (Picamera2 only):
+   - `SC_SHUTTER_ADAPT_ENABLE=0` (set to `1` to enable)
+   - `SC_SHUTTER_MIN_US=5000` / `SC_SHUTTER_MAX_US=1000000` (up to 1s)
+   - `SC_SHUTTER_STEP_US=20000`: Increase per update when under-exposed
+   - `SC_SHUTTER_RETURN_STEP_US=10000`: Decrease per update when normal/over
+   - `SC_SHUTTER_BASE_US=10000`: Target when returning to normal (~1/100s)
+   - `SC_SHUTTER_UPDATE_INTERVAL_SEC=1.0`: Min seconds between shutter changes
 
 Notes and Tips
 --------------

@@ -51,6 +51,14 @@ class BaseCamera:
         """
         return False
 
+    def set_auto_exposure(self, enable: bool) -> bool:
+        """Enable or disable camera auto exposure if supported.
+
+        Returns:
+          True if applied; False otherwise.
+        """
+        return False
+
     def supports_gain(self) -> bool:
         """Return True if this camera supports analogue gain control."""
         return False
@@ -140,6 +148,16 @@ class PiCamera2Wrapper(BaseCamera):
         except Exception:
             return False
 
+    def set_auto_exposure(self, enable: bool) -> bool:
+        """Toggle Picamera2 AE (auto exposure)."""
+        try:
+            if not self._started or self.picam2 is None:
+                return False
+            self.picam2.set_controls({"AeEnable": bool(enable)})
+            return True
+        except Exception:
+            return False
+
     def supports_gain(self) -> bool:
         """Picamera2 exposes AnalogueGain control."""
         return True
@@ -155,6 +173,30 @@ class PiCamera2Wrapper(BaseCamera):
             if not self._started or self.picam2 is None:
                 return False
             self.picam2.set_controls({"AnalogueGain": float(gain)})
+            return True
+        except Exception:
+            return False
+
+    def supports_shutter(self) -> bool:
+        """Picamera2 supports manual ExposureTime control."""
+        return True
+
+    def set_shutter(self, exposure_time_us: int) -> bool:
+        """Set manual exposure time (microseconds) and adjust frame duration.
+
+        This disables AE to allow manual exposure control.
+        """
+        try:
+            if not self._started or self.picam2 is None:
+                return False
+            us = int(exposure_time_us)
+            # Ensure frame duration can accommodate the exposure time
+            limits = (us, max(us, us + 1000))
+            self.picam2.set_controls({
+                "AeEnable": False,
+                "ExposureTime": us,
+                "FrameDurationLimits": limits,
+            })
             return True
         except Exception:
             return False

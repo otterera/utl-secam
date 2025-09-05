@@ -50,6 +50,15 @@ class Config:
     # Rotate frames by this many degrees (allowed: 0, 90, 180, 270). Default: 180 for upside-down installs.
     ROTATE_DEGREES = int(os.getenv("SC_ROTATE_DEGREES", 180))
 
+    # Automatic shutter (exposure time) adaptation (Picamera2 only)
+    SHUTTER_ADAPT_ENABLE = os.getenv("SC_SHUTTER_ADAPT_ENABLE", "0") == "1"
+    SHUTTER_MIN_US = int(os.getenv("SC_SHUTTER_MIN_US", 5000))  # 1/200s
+    SHUTTER_MAX_US = int(os.getenv("SC_SHUTTER_MAX_US", 1_000_000))  # up to 1 second
+    SHUTTER_STEP_US = int(os.getenv("SC_SHUTTER_STEP_US", 20_000))
+    SHUTTER_RETURN_STEP_US = int(os.getenv("SC_SHUTTER_RETURN_STEP_US", 10_000))
+    SHUTTER_BASE_US = int(os.getenv("SC_SHUTTER_BASE_US", 10_000))  # target when normal (~1/100s)
+    SHUTTER_UPDATE_INTERVAL_SEC = float(os.getenv("SC_SHUTTER_UPDATE_INTERVAL_SEC", 1.0))
+
     # Adaptive sensitivity based on exposure (brightness) analysis
     ADAPTIVE_SENSITIVITY = os.getenv("SC_ADAPTIVE_SENSITIVITY", "1") == "1"  # Toggle adaptive behavior
     EXP_BRIGHT_MEAN = float(os.getenv("SC_EXP_BRIGHT_MEAN", 200))  # Over-exposure mean threshold

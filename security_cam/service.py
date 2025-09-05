@@ -66,6 +66,10 @@ class SecurityCamService:
         # Camera analogue gain adaptation
         self._gain_value: float = float(getattr(self.config, "GAIN_MIN", 1.0))
         self._gain_last_update: float = 0.0
+        # Camera shutter (exposure time) adaptation
+        self._shutter_us: int = int(getattr(self.config, "SHUTTER_BASE_US", 10_000))
+        self._shutter_last_update: float = 0.0
+        self._manual_exposure: bool = False
 
     # Public API
     def start(self) -> None:
@@ -245,6 +249,8 @@ class SecurityCamService:
         self._maybe_adjust_ev(exp_state)
         # Try to adjust analogue gain (Picamera2) to brighten/darken
         self._maybe_adjust_gain(exp_state)
+        # Try to adjust shutter time up to 1s if very dark
+        self._maybe_adjust_shutter(exp_state)
 
     def _maybe_adjust_ev(self, exp_state: str) -> None:
         """Adapt camera exposure bias (EV) if supported and enabled.
@@ -318,6 +324,52 @@ class SecurityCamService:
         if self.camera.set_gain(g):
             self._gain_value = g
             self._gain_last_update = now
+
+    def _maybe_adjust_shutter(self, exp_state: str) -> None:
+        """Adapt manual exposure time (shutter) for dim/bright scenes.
+
+        Switches to manual exposure when under-exposed and ramps exposure time up
+        to `SHUTTER_MAX_US`. When exposure returns to normal or bright, ramps
+        down toward `SHUTTER_BASE_US` and re-enables AE when near base.
+        """
+        if not self.config.SHUTTER_ADAPT_ENABLE:
+            return
+        if not hasattr(self.camera, "set_shutter") or not getattr(self.camera, "supports_shutter")():
+            return
+        now = time.time()
+        last = getattr(self, "_shutter_last_update", 0.0)
+        if now - last < float(self.config.SHUTTER_UPDATE_INTERVAL_SEC):
+            return
+
+        cur = int(getattr(self, "_shutter_us", int(self.config.SHUTTER_BASE_US)))
+        base = int(self.config.SHUTTER_BASE_US)
+        changed = False
+
+        if exp_state == "under":
+            # Switch to manual exposure and increase shutter time
+            target = min(self.config.SHUTTER_MAX_US, cur + int(self.config.SHUTTER_STEP_US))
+            if target != cur:
+                if self.camera.set_shutter(target):
+                    self._shutter_us = target
+                    self._manual_exposure = True
+                    changed = True
+        elif exp_state in ("normal", "over"):
+            # Reduce shutter toward base; re-enable AE near base
+            step = int(self.config.SHUTTER_RETURN_STEP_US)
+            if cur > base:
+                target = max(base, cur - step)
+                if self.camera.set_shutter(target):
+                    self._shutter_us = target
+                    self._manual_exposure = True
+                    changed = True
+            # If near base, re-enable AE and stop manual control
+            if abs(self._shutter_us - base) <= step:
+                if hasattr(self.camera, "set_auto_exposure"):
+                    if self.camera.set_auto_exposure(True):
+                        self._manual_exposure = False
+
+        if changed:
+            self._shutter_last_update = now
 
     def _maybe_save_frame(self, frame: np.ndarray, detections) -> None:
         """Annotate and save the frame if save rate permits."""
