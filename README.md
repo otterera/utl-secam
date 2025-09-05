@@ -128,3 +128,150 @@ Scheduling
 License
 -------
 No license specified; for personal use.
+
+Quickstart (Fresh Install)
+-------------------------
+This step-by-step guide covers a clean Raspberry Pi setup through a working, auto-starting camera app.
+
+1) Hardware + OS
+- Raspberry Pi 3B (defaults tuned for 3B; others work)
+- Raspberry Pi Camera Module (v1/ov5647, v2/imx219, HQ/imx477, or v3/imx708)
+- Raspberry Pi OS Bookworm
+- LAN connectivity
+
+2) Update OS
+
+    sudo apt update && sudo apt full-upgrade -y
+    sudo reboot
+
+3) Enable the camera (libcamera stack)
+- `sudo raspi-config` → Interface Options → I2C → Enable (recommended)
+- Legacy Camera should remain DISABLED on Bookworm
+
+4) Install packages
+
+    sudo apt update
+    sudo apt install -y python3-opencv python3-flask python3-numpy python3-picamera2 ufw
+    # Optional diagnostics
+    sudo apt install -y rpicam-apps v4l-utils
+
+5) Get the app onto your Pi
+
+    cd ~
+    mkdir -p ~/work && cd ~/work
+    # If using git (replace with your origin):
+    # git clone <your-repo-url> utl-secam
+    # cd utl-secam
+    # Or cd into the directory you copied.
+
+6) One-shot setup (recommended)
+
+    cd /path/to/utl-secam
+    sudo bash scripts/setup_raspi_env.sh \
+      --user $USER \
+      --project-dir $(pwd) \
+      --port 8000 \
+      --active-windows "22:00-06:00" \
+      --allow-ufw 192.168.10.0/24   # your LAN (or 'any' or 'skip')
+
+Notes:
+- Pass your actual username with `--user` (default pi). The script is idempotent.
+- The service is named `raspi-security-cam`.
+
+7) Verify service + dashboard
+
+    sudo systemctl status raspi-security-cam --no-pager
+    sudo ss -lntp | grep :8000 || true
+    # In a browser on LAN: http://<pi-ip>:8000/
+
+Endpoints
+---------
+- Latest frame: `http://<pi-ip>:8000/latest.jpg`
+- MJPEG stream: `http://<pi-ip>:8000/stream.mjpg`
+- JSON state: `http://<pi-ip>:8000/api/state` (includes exposure/adaptive telemetry)
+
+8) Configure behavior
+Edit the service env:
+
+    sudoedit /etc/default/raspi-security-cam
+    # SC_HOST=0.0.0.0
+    # SC_PORT=8000
+    # SC_CAMERA_BACKEND=picamera2   # or v4l2 or auto
+    # SC_FRAME_WIDTH=640
+    # SC_FRAME_HEIGHT=480
+    # SC_CAPTURE_FPS=5
+    # SC_DETECT_EVERY_N_FRAMES=2
+    # SC_SAVE_DIR=/path/to/data/captures
+    # SC_ACTIVE_WINDOWS="22:00-06:00"
+    # Adaptive sensitivity (on by default):
+    # SC_ADAPTIVE_SENSITIVITY=1
+    # SC_EXP_BRIGHT_MEAN=200
+    # SC_EXP_DARK_MEAN=40
+    # SC_EXP_HIGH_CLIP_FRAC=0.05
+    # SC_EXP_LOW_CLIP_FRAC=0.05
+    # SC_ADAPT_HIT_THRESHOLD_DELTA=0.5
+    # SC_ADAPT_MIN_SIZE_SCALE=1.2
+    # SC_ADAPT_DETECT_STRIDE_SCALE=2.0
+
+Apply changes:
+
+    sudo systemctl restart raspi-security-cam
+
+9) Firewall (UFW)
+
+    sudo ufw allow from 192.168.10.0/24 to any port 8000 proto tcp
+    sudo ufw status
+
+Alternative: SSH tunnel instead of opening the port:
+
+    ssh -L 8000:localhost:8000 <user>@<pi-ip>
+    # then open http://localhost:8000
+
+10) Camera diagnostics
+If frames stay at 0, test the camera outside the app:
+
+    sudo systemctl stop raspi-security-cam
+    rpicam-hello -n -t 2000
+    v4l2-ctl --list-devices
+    dmesg | grep -i -E 'imx|ov|unicam|camera'
+
+If “no cameras available”, reseat the CSI ribbon and, if you know the model, force the overlay in `/boot/firmware/config.txt`:
+- `dtoverlay=ov5647` (v1)
+- `dtoverlay=imx219` (v2)
+- `dtoverlay=imx477` (HQ)
+- `dtoverlay=imx708` (v3)
+
+Then reboot and retest:
+
+    sudo systemctl start raspi-security-cam
+
+11) Service management
+
+    sudo systemctl start raspi-security-cam
+    sudo systemctl stop raspi-security-cam
+    sudo systemctl restart raspi-security-cam
+    sudo journalctl -u raspi-security-cam -f
+
+12) Where files live
+- Code: your project directory (e.g., `/home/<user>/work/utl-secam`)
+- Captures: `data/captures/` (configurable via `SC_SAVE_DIR`)
+- Systemd unit: `/etc/systemd/system/raspi-security-cam.service`
+- Service env: `/etc/default/raspi-security-cam`
+
+13) Uninstall / disable
+
+    sudo systemctl disable --now raspi-security-cam
+    sudo rm /etc/systemd/system/raspi-security-cam.service
+    sudo rm /etc/default/raspi-security-cam
+    sudo systemctl daemon-reload
+
+Optionally remove the project folder and capture directory.
+
+14) Security notes
+- The dashboard has no authentication; avoid exposing to the internet.
+- Restrict UFW to LAN or use SSH/VPN; consider reverse proxy + auth on port 80.
+
+15) Performance tips (Pi 3B)
+- 640x480 @ 5 FPS is a good balance.
+- `SC_DETECT_EVERY_N_FRAMES=2` cuts CPU while staying responsive.
+- Adaptive sensitivity (default on) auto-tunes detection in poor lighting.
