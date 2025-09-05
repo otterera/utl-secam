@@ -20,6 +20,12 @@ class ServiceState:
     saved_images_count: int = 0
     total_frames: int = 0
     armed: bool = True
+    exposure_state: str = "unknown"  # normal|over|under
+    exposure_mean: float = 0.0
+    exposure_low_clip: float = 0.0
+    exposure_high_clip: float = 0.0
+    detect_stride: int = 1
+    hit_threshold: float = 0.0
 
 
 class SecurityCamService:
@@ -35,6 +41,16 @@ class SecurityCamService:
         self._latest_frame: Optional[np.ndarray] = None
         self._last_saved_ts: float = 0.0
         os.makedirs(self.config.SAVE_DIR, exist_ok=True)
+        # Adaptive internals
+        self._detect_stride_base = max(1, self.config.DETECT_EVERY_N_FRAMES)
+        self._detect_stride_dyn = self._detect_stride_base
+        self._hit_threshold_base = self.config.DETECTOR_HIT_THRESHOLD
+        self._hit_threshold_dyn = self._hit_threshold_base
+        self._min_size_base = (self.config.DETECTOR_MIN_WIDTH, self.config.DETECTOR_MIN_HEIGHT)
+        self._min_size_dyn = self._min_size_base
+        self._exp_mean_ema = 0.0
+        self._exp_low_clip_ema = 0.0
+        self._exp_high_clip_ema = 0.0
 
     # Public API
     def start(self) -> None:
@@ -97,12 +113,21 @@ class SecurityCamService:
             # schedule status
             self.state.armed = self.schedule.is_active_now()
 
+            # exposure analysis and adaptive sensitivity
+            self._update_exposure_and_adapt(frame)
+            self.state.detect_stride = int(self._detect_stride_dyn)
+            self.state.hit_threshold = float(self._hit_threshold_dyn)
+
             # detection throttling
-            if frame_idx % max(1, self.config.DETECT_EVERY_N_FRAMES) == 0:
+            if frame_idx % max(1, int(self._detect_stride_dyn)) == 0:
                 detections = []
                 if self.state.armed:
                     try:
-                        detections = self.detector.detect(frame)
+                        detections = self.detector.detect(
+                            frame,
+                            hit_threshold=self._hit_threshold_dyn,
+                            min_size=self._min_size_dyn,
+                        )
                     except Exception as e:
                         # Never let detection errors kill the capture loop
                         print(f"[secam] Detection error: {e}", flush=True)
@@ -120,6 +145,52 @@ class SecurityCamService:
             frame_idx += 1
             # Simple pacing
             time.sleep(interval)
+
+    def _update_exposure_and_adapt(self, frame: np.ndarray) -> None:
+        if not self.config.ADAPTIVE_SENSITIVITY:
+            self.state.exposure_state = "off"
+            self._detect_stride_dyn = self._detect_stride_base
+            self._hit_threshold_dyn = self._hit_threshold_base
+            self._min_size_dyn = self._min_size_base
+            return
+        # Compute metrics
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        mean = float(gray.mean())
+        # Use tight thresholds for clip percentages
+        low_clip = float((gray <= 5).mean())
+        high_clip = float((gray >= 250).mean())
+        # EMA to stabilize
+        alpha = 0.2
+        self._exp_mean_ema = (1 - alpha) * self._exp_mean_ema + alpha * mean
+        self._exp_low_clip_ema = (1 - alpha) * self._exp_low_clip_ema + alpha * low_clip
+        self._exp_high_clip_ema = (1 - alpha) * self._exp_high_clip_ema + alpha * high_clip
+
+        over = self._exp_high_clip_ema > self.config.EXP_HIGH_CLIP_FRAC or self._exp_mean_ema > self.config.EXP_BRIGHT_MEAN
+        under = self._exp_low_clip_ema > self.config.EXP_LOW_CLIP_FRAC or self._exp_mean_ema < self.config.EXP_DARK_MEAN
+        if over:
+            exp_state = "over"
+        elif under:
+            exp_state = "under"
+        else:
+            exp_state = "normal"
+
+        self.state.exposure_state = exp_state
+        self.state.exposure_mean = self._exp_mean_ema
+        self.state.exposure_low_clip = self._exp_low_clip_ema
+        self.state.exposure_high_clip = self._exp_high_clip_ema
+
+        # Adapt parameters
+        if exp_state in ("over", "under"):
+            self._hit_threshold_dyn = self._hit_threshold_base + self.config.ADAPT_HIT_THRESHOLD_DELTA
+            self._min_size_dyn = (
+                int(self._min_size_base[0] * self.config.ADAPT_MIN_SIZE_SCALE),
+                int(self._min_size_base[1] * self.config.ADAPT_MIN_SIZE_SCALE),
+            )
+            self._detect_stride_dyn = int(max(1, self._detect_stride_base * self.config.ADAPT_DETECT_STRIDE_SCALE))
+        else:
+            self._hit_threshold_dyn = self._hit_threshold_base
+            self._min_size_dyn = self._min_size_base
+            self._detect_stride_dyn = self._detect_stride_base
 
     def _maybe_save_frame(self, frame: np.ndarray, detections) -> None:
         now = time.time()

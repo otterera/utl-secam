@@ -55,6 +55,12 @@ def create_app(service: SecurityCamService) -> flask.Flask:
             "saved_images_count": st.saved_images_count,
             "total_frames": st.total_frames,
             "armed": st.armed,
+            "exposure_state": st.exposure_state,
+            "exposure_mean": st.exposure_mean,
+            "exposure_low_clip": st.exposure_low_clip,
+            "exposure_high_clip": st.exposure_high_clip,
+            "detect_stride": st.detect_stride,
+            "hit_threshold": st.hit_threshold,
         }
 
     @app.route("/stream.mjpg")

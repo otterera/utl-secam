@@ -32,3 +32,13 @@ class Config:
     # Schedule (comma-separated daily windows, e.g., "22:00-06:00,12:30-13:30").
     # Empty means always armed.
     ACTIVE_WINDOWS = os.getenv("SC_ACTIVE_WINDOWS", "").strip()
+
+    # Adaptive sensitivity based on exposure (brightness) analysis
+    ADAPTIVE_SENSITIVITY = os.getenv("SC_ADAPTIVE_SENSITIVITY", "1") == "1"
+    EXP_BRIGHT_MEAN = float(os.getenv("SC_EXP_BRIGHT_MEAN", 200))
+    EXP_DARK_MEAN = float(os.getenv("SC_EXP_DARK_MEAN", 40))
+    EXP_HIGH_CLIP_FRAC = float(os.getenv("SC_EXP_HIGH_CLIP_FRAC", 0.05))  # >= 255-5
+    EXP_LOW_CLIP_FRAC = float(os.getenv("SC_EXP_LOW_CLIP_FRAC", 0.05))   # <= 5
+    ADAPT_HIT_THRESHOLD_DELTA = float(os.getenv("SC_ADAPT_HIT_THRESHOLD_DELTA", 0.5))
+    ADAPT_MIN_SIZE_SCALE = float(os.getenv("SC_ADAPT_MIN_SIZE_SCALE", 1.2))
+    ADAPT_DETECT_STRIDE_SCALE = float(os.getenv("SC_ADAPT_DETECT_STRIDE_SCALE", 2.0))

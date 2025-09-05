@@ -48,7 +48,13 @@ class HumanDetector:
         self.hog = cv2.HOGDescriptor()
         self.hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 
-    def detect(self, frame_bgr: np.ndarray) -> List[Detection]:
+    def detect(
+        self,
+        frame_bgr: np.ndarray,
+        *,
+        hit_threshold: float | None = None,
+        min_size: Tuple[int, int] | None = None,
+    ) -> List[Detection]:
         # Work on a smaller copy for speed
         h, w = frame_bgr.shape[:2]
         scale_for_speed = 0.75 if max(h, w) > 640 else 1.0
@@ -62,7 +68,7 @@ class HumanDetector:
             winStride=(Config.DETECTOR_STRIDE, Config.DETECTOR_STRIDE),
             padding=(8, 8),
             scale=Config.DETECTOR_SCALE,
-            hitThreshold=Config.DETECTOR_HIT_THRESHOLD,
+            hitThreshold=(Config.DETECTOR_HIT_THRESHOLD if hit_threshold is None else hit_threshold),
         )
 
         detections: List[Detection] = []
@@ -73,7 +79,9 @@ class HumanDetector:
                 y = int(y / scale_for_speed)
                 w0 = int(w0 / scale_for_speed)
                 h0 = int(h0 / scale_for_speed)
-            if w0 < Config.DETECTOR_MIN_WIDTH or h0 < Config.DETECTOR_MIN_HEIGHT:
+            min_w = Config.DETECTOR_MIN_WIDTH if min_size is None else int(min_size[0])
+            min_h = Config.DETECTOR_MIN_HEIGHT if min_size is None else int(min_size[1])
+            if w0 < min_w or h0 < min_h:
                 continue
             detections.append(Detection((x, y, w0, h0), float(score)))
 
