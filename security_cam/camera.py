@@ -90,13 +90,17 @@ class Cv2V4L2Camera(BaseCamera):
 
 def make_camera() -> BaseCamera:
     size = (Config.FRAME_WIDTH, Config.FRAME_HEIGHT)
-    # Try PiCamera2 first
+    backend = Config.CAMERA_BACKEND
+    if backend == "picamera2":
+        return PiCamera2Wrapper(size=size)
+    if backend == "v4l2":
+        return Cv2V4L2Camera(index=0, size=size, fps=Config.CAPTURE_FPS)
+
+    # auto: try picamera2, then v4l2
     try:
         import importlib
 
         importlib.import_module("picamera2")
         return PiCamera2Wrapper(size=size)
     except Exception:
-        # Fallback to OpenCV V4L2
         return Cv2V4L2Camera(index=0, size=size, fps=Config.CAPTURE_FPS)
-

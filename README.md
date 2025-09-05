@@ -62,6 +62,7 @@ Tune behavior using environment variables (defaults shown):
 - `SC_HOST=0.0.0.0` / `SC_PORT=8000`: Server bind
 - `SC_DEBUG=0`: Set `1` to enable Flask debug
 - `SC_ACTIVE_WINDOWS=""`: Comma-separated daily windows to arm detection, e.g., `22:00-06:00` or `22:00-06:00,12:30-13:30`. Empty means always armed. Times use the Pi's local time.
+- `SC_CAMERA_BACKEND=auto`: Choose `picamera2`, `v4l2`, or `auto`.
 
 Notes and Tips
 --------------
@@ -69,6 +70,7 @@ Notes and Tips
 - Camera backend: Picamera2 is preferred. If it’s not available, ensure `/dev/video0` is exposed (e.g., `libcamera-vid --inline --width 640 --height 480 --framerate 10 --codec yuv420 --listen &` can provide a v4l2 loopback if configured) or use the legacy stack if your OS provides it.
 - Storage: Images can fill the SD card. The app enforces `SC_MAX_SAVED_IMAGES`; adjust to your capacity.
 - Service: To run on boot, wrap `python3 /path/to/main.py` in a `systemd` service.
+ - Startup: Flask now starts even if the camera backend is slow or failing; set `SC_CAMERA_BACKEND=v4l2` to force OpenCV/V4L2 if Picamera2 causes startup issues.
 
 systemd Service (Auto-start on Boot)
 ------------------------------------

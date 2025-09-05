@@ -38,7 +38,6 @@ class SecurityCamService:
 
     # Public API
     def start(self) -> None:
-        self.camera.start()
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
 
@@ -73,7 +72,18 @@ class SecurityCamService:
     def _run(self) -> None:
         frame_idx = 0
         interval = 1.0 / max(1, self.config.CAPTURE_FPS)
+        # Initialize camera here so Flask can start even if camera blocks
+        started = False
         while not self._stop.is_set():
+            if not started:
+                try:
+                    self.camera.start()
+                    print("[secam] Camera started (backend=%s)" % self.config.CAMERA_BACKEND, flush=True)
+                    started = True
+                except Exception as e:
+                    print(f"[secam] Camera start failed: {e}", flush=True)
+                    time.sleep(3.0)
+                    continue
             frame = self.camera.read()
             if frame is None:
                 time.sleep(0.01)
