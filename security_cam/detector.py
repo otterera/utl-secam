@@ -5,7 +5,7 @@ and a `HumanDetector` that wraps OpenCV’s default people detector.
 """
 
 from dataclasses import dataclass  # For structured detection results
-from typing import List, Tuple  # Type hints
+from typing import List, Tuple, Any  # Type hints
 import os  # For file existence checks
 
 import cv2  # OpenCV for HOG person detection
@@ -300,7 +300,7 @@ class MotionDetector:
         gray = cv2.GaussianBlur(gray, (k, k), 0)
         return gray, scale
 
-    def detect(self, frame_bgr: np.ndarray) -> List[Detection]:
+    def detect(self, frame_bgr: np.ndarray, **_: Any) -> List[Detection]:
         cur, scale = self._prep(frame_bgr)
         if self.prev is None:
             self.prev = cur
