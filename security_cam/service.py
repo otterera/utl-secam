@@ -11,7 +11,7 @@ import numpy as np
 
 from .camera import BaseCamera, make_camera
 from .config import Config
-from .detector import MultiHumanDetector
+from .detector import get_detector
 from .schedule import DailySchedule
 
 
@@ -44,7 +44,7 @@ class SecurityCamService:
         """Initialize components, state, and adaptive tuning caches."""
         self.config = Config
         self.camera: BaseCamera = make_camera()
-        self.detector = MultiHumanDetector()
+        self.detector = get_detector(self.config.DETECTOR_BACKEND)
         self.state = ServiceState()
         self.schedule = DailySchedule(self.config.ACTIVE_WINDOWS)
         self._thread: Optional[threading.Thread] = None

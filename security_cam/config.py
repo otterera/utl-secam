@@ -30,6 +30,15 @@ class Config:
     DETECTOR_STRIDE = int(os.getenv("SC_DETECTOR_STRIDE", 8))  # HOG winStride step size
     DETECTOR_SCALE = float(os.getenv("SC_DETECTOR_SCALE", 1.05))  # HOG pyramid scale factor
     DETECTOR_HIT_THRESHOLD = float(os.getenv("SC_DETECTOR_HIT_THRESHOLD", 0))  # HOG SVM hit threshold
+    # Which detector backend to use: 'multi' (HOG+face) or 'motion' (frame differencing)
+    DETECTOR_BACKEND = os.getenv("SC_DETECTOR_BACKEND", "multi").strip().lower()  # multi|motion
+
+    # Motion detector (frame differencing) parameters
+    MOTION_DOWNSCALE = float(os.getenv("SC_MOTION_DOWNSCALE", 0.5))  # 0.2..1.0, lower = faster/more smoothing
+    MOTION_BLUR_KERNEL = int(os.getenv("SC_MOTION_BLUR_KERNEL", 5))  # odd int
+    MOTION_DELTA_THRESH = int(os.getenv("SC_MOTION_DELTA_THRESH", 10))  # intensity threshold for diffs
+    MOTION_DILATE_ITER = int(os.getenv("SC_MOTION_DILATE_ITER", 2))  # morphology to close gaps
+    MOTION_MIN_PIXELS = int(os.getenv("SC_MOTION_MIN_PIXELS", 150))  # changed pixels to trigger (post-resize)
 
     # Saving
     # Normalize save directory: strip quotes/whitespace, expand ~ and $VARS, make absolute
