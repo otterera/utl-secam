@@ -35,6 +35,8 @@ def create_app(service: SecurityCamService) -> flask.Flask:
             saved_count=st.saved_images_count,
             total_frames=st.total_frames,
             armed=st.armed,
+            person_count=getattr(st, "person_count", 0),
+            face_count=getattr(st, "face_count", 0),
             exposure_state=st.exposure_state,
             latest_files=[os.path.basename(p) for p in latest_files],
             ts=int(time.time()),
@@ -76,6 +78,9 @@ def create_app(service: SecurityCamService) -> flask.Flask:
             "exposure_high_clip": st.exposure_high_clip,
             "detect_stride": st.detect_stride,
             "hit_threshold": st.hit_threshold,
+            "person_count": getattr(st, "person_count", 0),
+            "face_count": getattr(st, "face_count", 0),
+            "kinds": getattr(st, "last_kinds", []),
         }
 
     @app.route("/stream.mjpg")
@@ -114,6 +119,9 @@ _INDEX_TEMPLATE = """
     .arm { padding: 6px 10px; border-radius: 6px; font-weight: 600; font-size: 12px; }
     .arm.on { background: #144d14; color: #bff5bf; }
     .arm.off { background: #3a3a3a; color: #bbb; }
+    .pill { padding: 4px 8px; border-radius: 999px; font-weight: 600; font-size: 11px; }
+    .pill.person { background: #441111; color: #ff9a9a; border: 1px solid #b00020; }
+    .pill.face { background: #0f2b3a; color: #9eeaff; border: 1px solid #1aa3d9; }
     .exp { padding: 6px 10px; border-radius: 6px; font-weight: 600; font-size: 12px; }
     .exp.normal { background: #2a2a2a; color: #bbb; }
     .exp.over { background: #b00020; color: #fff; }
@@ -143,6 +151,12 @@ _INDEX_TEMPLATE = """
           <span class="exp under">Exposure: Under</span>
         {% elif exposure_state == 'normal' %}
           <span class="exp normal">Exposure: Normal</span>
+        {% endif %}
+        {% if person_count %}
+          <span class="pill person">person × {{person_count}}</span>
+        {% endif %}
+        {% if face_count %}
+          <span class="pill face">face × {{face_count}}</span>
         {% endif %}
       </div>
       {% if alert_active %}

@@ -3,7 +3,7 @@
 import os
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional
 
 import cv2
@@ -29,6 +29,9 @@ class ServiceState:
     exposure_high_clip: float = 0.0
     detect_stride: int = 1
     hit_threshold: float = 0.0
+    person_count: int = 0
+    face_count: int = 0
+    last_kinds: List[str] = field(default_factory=list)
 
 
 class SecurityCamService:
@@ -178,12 +181,26 @@ class SecurityCamService:
                     if detections:
                         self.state.detecting = True
                         self.state.last_detection_ts = time.time()
+                        # Update counts and kinds for UI/API
+                        persons = sum(1 for d in detections if getattr(d, "kind", "person") == "person")
+                        faces = sum(1 for d in detections if getattr(d, "kind", "") == "face")
+                        kinds = []
+                        if persons:
+                            kinds.append("person")
+                        if faces:
+                            kinds.append("face")
+                        self.state.person_count = persons
+                        self.state.face_count = faces
+                        self.state.last_kinds = kinds
                         if self.config.SAVE_ON_DETECT:
                             self._maybe_save_frame(proc, detections)
                 # cooldown / idle state
                 if not detections:
                     if time.time() - self.state.last_detection_ts > self.config.ALERT_COOLDOWN_SEC:
                         self.state.detecting = False
+                        self.state.person_count = 0
+                        self.state.face_count = 0
+                        self.state.last_kinds = []
 
             frame_idx += 1
             # Simple pacing to cap CPU
@@ -379,7 +396,17 @@ class SecurityCamService:
         annotated = frame.copy()
         for det in detections:
             x, y, w, h = det.bbox
-            cv2.rectangle(annotated, (x, y), (x + w, y + h), (0, 0, 255), 2)
+            kind = getattr(det, "kind", "person")
+            # BGR colors: red for person, cyan/yellowish for face
+            color = (0, 0, 255) if kind == "person" else (255, 200, 0)
+            cv2.rectangle(annotated, (x, y), (x + w, y + h), color, 2)
+            # Label background and text
+            label = f"{kind}"
+            (tw, th), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+            bx1, by1 = x, max(0, y - th - baseline - 4)
+            bx2, by2 = x + tw + 6, y
+            cv2.rectangle(annotated, (bx1, by1), (bx2, by2), color, thickness=-1)
+            cv2.putText(annotated, label, (x + 3, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
         ts_str = time.strftime("%Y%m%d-%H%M%S")
         ms = int((now - int(now)) * 1000)
         filename = f"detect_{ts_str}_{ms:03d}.jpg"

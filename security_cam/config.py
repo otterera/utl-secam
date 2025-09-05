@@ -89,7 +89,7 @@ class Config:
     # Automatic analogue gain adjustment (Picamera2 only)
     GAIN_ADAPT_ENABLE = os.getenv("SC_GAIN_ADAPT_ENABLE", "1") == "1"
     GAIN_MIN = float(os.getenv("SC_GAIN_MIN", 1.0))
-    GAIN_MAX = float(os.getenv("SC_GAIN_MAX", 8.0))
+    GAIN_MAX = float(os.getenv("SC_GAIN_MAX", 12.0))
     GAIN_STEP = float(os.getenv("SC_GAIN_STEP", 0.5))
     GAIN_RETURN_STEP = float(os.getenv("SC_GAIN_RETURN_STEP", 0.25))
     GAIN_UPDATE_INTERVAL_SEC = float(os.getenv("SC_GAIN_UPDATE_INTERVAL_SEC", 1.0))
