@@ -194,12 +194,12 @@ class _CascadeFaceDetector:
 
 class HaarFaceDetector(_CascadeFaceDetector):
     def __init__(self) -> None:
-        super().__init__(["haarcascade_frontalface_default.xml"]) 
+        super().__init__(["haarcascade_frontalface_default.xml"])
 
 
 class LbpFaceDetector(_CascadeFaceDetector):
     def __init__(self) -> None:
-        super().__init__(["lbpcascade_frontalface.xml"]) 
+        super().__init__(["lbpcascade_frontalface.xml"])
 
 
 class DnnFaceDetector:

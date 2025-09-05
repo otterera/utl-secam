@@ -58,6 +58,7 @@ Tune behavior using environment variables (defaults shown):
 - `SC_SAVE_DIR=data/captures`: Directory for saved images
 - `SC_SAVE_INTERVAL_SEC=1.0`: Min seconds between saved frames
 - `SC_MAX_SAVED_IMAGES=2000`: Retention limit (oldest deleted)
+- `SC_ANNOTATE_SAVED=1`: Draw detection boxes/labels on saved images (`0` to disable)
 - `SC_ALERT_COOLDOWN_SEC=10.0`: How long to keep alert after last detection
 - `SC_GALLERY_LATEST_COUNT=12`: Images shown in dashboard gallery
 - `SC_HOST=0.0.0.0` / `SC_PORT=8000`: Server bind

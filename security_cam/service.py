@@ -503,19 +503,20 @@ class SecurityCamService:
         if now - self._last_saved_ts < self.config.SAVE_INTERVAL_SEC:
             return
         annotated = frame.copy()
-        for det in detections:
-            x, y, w, h = det.bbox
-            kind = getattr(det, "kind", "person")
-            # BGR colors: red for person, cyan/yellowish for face
-            color = (0, 0, 255) if kind == "person" else (255, 200, 0)
-            cv2.rectangle(annotated, (x, y), (x + w, y + h), color, 2)
-            # Label background and text
-            label = f"{kind}"
-            (tw, th), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-            bx1, by1 = x, max(0, y - th - baseline - 4)
-            bx2, by2 = x + tw + 6, y
-            cv2.rectangle(annotated, (bx1, by1), (bx2, by2), color, thickness=-1)
-            cv2.putText(annotated, label, (x + 3, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
+        if self.config.ANNOTATE_SAVED:
+            for det in detections:
+                x, y, w, h = det.bbox
+                kind = getattr(det, "kind", "person")
+                # BGR colors: red for person, cyan/yellowish for face
+                color = (0, 0, 255) if kind == "person" else (255, 200, 0)
+                cv2.rectangle(annotated, (x, y), (x + w, y + h), color, 2)
+                # Label background and text
+                label = f"{kind}"
+                (tw, th), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+                bx1, by1 = x, max(0, y - th - baseline - 4)
+                bx2, by2 = x + tw + 6, y
+                cv2.rectangle(annotated, (bx1, by1), (bx2, by2), color, thickness=-1)
+                cv2.putText(annotated, label, (x + 3, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
         ts_str = time.strftime("%Y%m%d-%H%M%S")
         ms = int((now - int(now)) * 1000)
         filename = f"detect_{ts_str}_{ms:03d}.jpg"
