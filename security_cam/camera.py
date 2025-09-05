@@ -35,6 +35,22 @@ class BaseCamera:
         """Stop and release camera resources."""
         pass
 
+    # Optional camera-side controls (Picamera2 backend implements these)
+    def supports_ev(self) -> bool:
+        """Return True if this camera supports EV-bias control."""
+        return False
+
+    def set_ev(self, ev: float) -> bool:
+        """Set exposure value (EV-bias) if supported.
+
+        Args:
+          ev: Exposure bias (positive to brighten, negative to darken).
+
+        Returns:
+          True if applied; False if unsupported or failed.
+        """
+        return False
+
 
 class PiCamera2Wrapper(BaseCamera):
     """PiCamera2-based camera backend for CSI-connected camera modules."""
@@ -59,6 +75,11 @@ class PiCamera2Wrapper(BaseCamera):
             main={"size": (w, h), "format": "RGB888"}  # Request RGB frames
         )
         self.picam2.configure(config)  # Apply configuration
+        # Ensure AE is enabled; EV-bias relies on auto-exposure being active
+        try:
+            self.picam2.set_controls({"AeEnable": True})
+        except Exception:
+            pass
         self.picam2.start()  # Start the camera
         self._started = True  # Mark as started
 
@@ -81,6 +102,28 @@ class PiCamera2Wrapper(BaseCamera):
             # Ignore errors during shutdown to keep cleanup robust
             pass
         self._started = False  # Mark as stopped
+
+    def supports_ev(self) -> bool:
+        """Picamera2 supports EV-bias when AE is enabled."""
+        return True
+
+    def set_ev(self, ev: float) -> bool:
+        """Apply an EV-bias to the auto-exposure algorithm.
+
+        Args:
+          ev: Exposure bias value to set.
+
+        Returns:
+          True if controls were applied successfully; False otherwise.
+        """
+        try:
+            if not self._started or self.picam2 is None:
+                return False
+            # Keep AE enabled and set the exposure value (bias)
+            self.picam2.set_controls({"AeEnable": True, "ExposureValue": float(ev)})
+            return True
+        except Exception:
+            return False
 
 
 class Cv2V4L2Camera(BaseCamera):

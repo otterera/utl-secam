@@ -64,3 +64,11 @@ class Config:
     ENHANCE_ON_OVER = os.getenv("SC_ENHANCE_ON_OVER", "1") == "1"
     ENHANCE_OVER_ALPHA = float(os.getenv("SC_ENHANCE_OVER_ALPHA", 0.85))  # Reduce contrast
     ENHANCE_OVER_BETA = float(os.getenv("SC_ENHANCE_OVER_BETA", -10))  # Darken slightly
+
+    # Automatic exposure EV-bias (camera-side, Picamera2 only)
+    AE_EV_ADAPT_ENABLE = os.getenv("SC_AE_EV_ADAPT_ENABLE", "1") == "1"
+    AE_EV_MIN = float(os.getenv("SC_AE_EV_MIN", -2.0))
+    AE_EV_MAX = float(os.getenv("SC_AE_EV_MAX", 2.0))
+    AE_EV_STEP = float(os.getenv("SC_AE_EV_STEP", 0.2))  # Per adjustment step
+    AE_EV_RETURN_STEP = float(os.getenv("SC_AE_EV_RETURN_STEP", 0.1))  # Move back toward 0 when normal
+    AE_EV_UPDATE_INTERVAL_SEC = float(os.getenv("SC_AE_EV_UPDATE_INTERVAL_SEC", 1.0))

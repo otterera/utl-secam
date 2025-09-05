@@ -226,6 +226,45 @@ class SecurityCamService:
             self._enh_alpha = float(self.config.ENHANCE_OVER_ALPHA)
             self._enh_beta = float(self.config.ENHANCE_OVER_BETA)
 
+        # Try to adjust camera EV-bias (Picamera2 only) to help AE converge
+        self._maybe_adjust_ev(exp_state)
+
+    def _maybe_adjust_ev(self, exp_state: str) -> None:
+        """Adapt camera exposure bias (EV) if supported and enabled.
+
+        Args:
+          exp_state: 'over' | 'under' | 'normal' | 'off'
+        """
+        if not self.config.AE_EV_ADAPT_ENABLE:
+            return
+        # Only Picamera2 implements set_ev; guard via duck-typing
+        if not hasattr(self.camera, "set_ev") or not getattr(self.camera, "supports_ev")():
+            return
+        now = time.time()
+        if now - self._ev_last_update < float(self.config.AE_EV_UPDATE_INTERVAL_SEC):
+            return  # Too soon to update again
+
+        ev = float(self._ev_bias)
+        if exp_state == "under":
+            ev = min(self.config.AE_EV_MAX, ev + float(self.config.AE_EV_STEP))
+        elif exp_state == "over":
+            ev = max(self.config.AE_EV_MIN, ev - float(self.config.AE_EV_STEP))
+        elif exp_state == "normal":
+            # Nudge back toward zero
+            step = float(self.config.AE_EV_RETURN_STEP)
+            if ev > 0:
+                ev = max(0.0, ev - step)
+            elif ev < 0:
+                ev = min(0.0, ev + step)
+        else:
+            return
+
+        if abs(ev - self._ev_bias) < 1e-6:
+            return  # No change
+        if self.camera.set_ev(ev):
+            self._ev_bias = ev
+            self._ev_last_update = now
+
     def _maybe_save_frame(self, frame: np.ndarray, detections) -> None:
         """Annotate and save the frame if save rate permits."""
         now = time.time()
