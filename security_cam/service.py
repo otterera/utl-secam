@@ -60,6 +60,9 @@ class SecurityCamService:
         # Enhancement parameters (contrast/brightness) applied when exposure is poor
         self._enh_alpha: float = 1.0
         self._enh_beta: float = 0.0
+        # Camera EV-bias adaptation (Picamera2): current bias and last update time
+        self._ev_bias: float = 0.0
+        self._ev_last_update: float = 0.0
 
     # Public API
     def start(self) -> None:
