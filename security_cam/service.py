@@ -320,7 +320,8 @@ class SecurityCamService:
         run_adjust = True
         now2 = time.time()
         if self._detector_backend == "motion":
-            # Only adjust on a fixed cadence; pause motion detection briefly
+            # Adjust on a fixed cadence and continue adjusting during the pause
+            # window so AE/gain/shutter can converge with several steps.
             if now2 - self._adjust_last_ts >= float(self.config.MOTION_ADJUST_PERIOD_SEC):
                 self._adjust_last_ts = now2
                 self._adjust_pause_until = now2 + float(self.config.MOTION_ADJUST_PAUSE_SEC)
@@ -333,6 +334,10 @@ class SecurityCamService:
                     pass
                 # Seed baseline when pause ends, so we capture a post-adjust frame
                 self._seed_at_resume = True
+                run_adjust = True
+            elif now2 < self._adjust_pause_until:
+                # Keep adjusting during the pause window (respecting each
+                # control's own update interval) to converge faster.
                 run_adjust = True
             else:
                 run_adjust = False
