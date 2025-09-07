@@ -45,19 +45,42 @@ class Config:
 
     # Detection
     DETECT_EVERY_N_FRAMES = int(os.getenv("SC_DETECT_EVERY_N_FRAMES", 1))  # Run detector every N frames
-    # Legacy HOG-related settings removed (stride/scale/min size/threshold)
-    # Detector backend: only motion is supported
-    DETECTOR_BACKEND = "motion"
 
     # Motion detector (frame differencing) parameters
     MOTION_DOWNSCALE = float(os.getenv("SC_MOTION_DOWNSCALE", 1.0))  # 0.2..1.0, lower = faster/more smoothing
+    """処理前に適用される縮小率。
+    SC_MOTION_DOWNSCALE の値でフレームを縮小し、処理負荷を軽減しつつ小さな揺れを平滑化します。
+    値が小さいほど高速で微細なちらつきに強くなりますが、細かい動きの検出力は低下します。
+    例：640*480 → 0.5 → 320*240 に縮小して処理。
+    """
     MOTION_BLUR_KERNEL = int(os.getenv("SC_MOTION_BLUR_KERNEL", 3))  # odd int
+    """ガウシアンブラーの強さ。
+    前のフレームとの絶対差分を計算します。
+    値が大きいほどノイズ抑制効果が高くなりますが、小さく速い動きがぼやける可能性があります。
+    5が標準、3は鋭敏、7以上は滑らか。"""
+
     MOTION_DELTA_THRESH = int(os.getenv("SC_MOTION_DELTA_THRESH", 50))  # intensity threshold for diffs
+    """SC_MOTION_DELTA_THRESH（0〜255）
+    差分の強度が SC_MOTION_DELTA_THRESH（0〜255）以上のピクセルを「変化あり」と判定します。
+    ピクセルが「動いた」と判定されるための差分強度。
+    値が小さいほど感度が高くなり、明るさの微小な変化も検出されます。
+    10〜15：高感度、20〜30：厳しめ。"""
+
     MOTION_DILATE_ITER = int(os.getenv("SC_MOTION_DILATE_ITER", 2))  # morphology to close gaps
-    MOTION_MIN_PIXELS = _env_int("SC_MOTION_MIN_PIXELS", 250)  # changed pixels to trigger (post-resize)
+    """変化領域を何回膨張させるか。
+    SC_MOTION_DILATE_ITER 回、変化領域を膨張させて隙間を埋めたり近接する動きを統合します。
+    値が大きいほど穴埋めや近接領域の統合が進み、変化ピクセル数が増えます。
+    1〜3が一般的、0は膨張なし（マスクが粗くなる）。"""
+
+    MOTION_MIN_PIXELS = _env_int("SC_MOTION_MIN_PIXELS", 1000)  # changed pixels to trigger (post-resize)
     # When using motion backend, run camera auto-adjustments only on this cadence,
     # and pause motion detection briefly during the adjustment window to avoid
     # false triggers from brightness jumps.
+    """モーションと判定するために必要な変化ピクセル数（縮小後の画像で）。
+    ピクセル数のカウント + 輪郭検出
+    変化したピクセル数が SC_MOTION_MIN_PIXELS 以上なら、モーションと判定し、動いている領域のバウンディングボックスを返します。
+    「どれくらいの領域が変化すればモーションとみなすか」の基準。"""
+
     MOTION_ADJUST_PERIOD_SEC = float(os.getenv("SC_MOTION_ADJUST_PERIOD_SEC", 180.0))
     MOTION_ADJUST_PAUSE_SEC = float(os.getenv("SC_MOTION_ADJUST_PAUSE_SEC", 3.0))
 
