@@ -45,7 +45,7 @@ Open the dashboard in a browser on your LAN:
 
 You should see:
 - A live latest frame
-- A red "HUMAN DETECTED" banner when people are detected
+- A red "HUMAN DETECTED" alert when motion is detected
 - A grid of recent captured images (saved in `data/captures/`)
 
 Configuration
@@ -54,9 +54,9 @@ Tune behavior using environment variables (defaults shown). Only the motion dete
 
 Camera
 - `SC_CAMERA_BACKEND=auto` (or `picamera2`/`v4l2`)
-- `SC_CAMERA_PROFILE=standard|noir` (NOIR always grayscale)
-- `SC_FRAME_WIDTH=640` / `SC_FRAME_HEIGHT=480`
-- `SC_CAPTURE_FPS=10`
+- `SC_CAMERA_PROFILE=standard|noir` (default `noir`; NOIR always grayscale)
+- `SC_FRAME_WIDTH=320` / `SC_FRAME_HEIGHT=240`
+- `SC_CAPTURE_FPS=5`
 - `SC_ROTATE_DEGREES=180` (0/90/180/270)
 
 Motion detector
@@ -86,12 +86,12 @@ Adaptive exposure (Picamera2)
 
 Notes and Tips
 --------------
-- Performance: The HOG detector is CPU-heavy. Defaults are tuned for Pi 3B. Lower resolution or raise `SC_DETECT_EVERY_N_FRAMES` for more headroom.
+- Performance: Defaults are tuned for Pi 3B. If CPU is high, lower resolution, reduce FPS, or raise `SC_DETECT_EVERY_N_FRAMES` for more headroom.
 - Camera backend: Picamera2 is preferred. If it’s not available, ensure `/dev/video0` is exposed (e.g., `libcamera-vid --inline --width 640 --height 480 --framerate 10 --codec yuv420 --listen &` can provide a v4l2 loopback if configured) or use the legacy stack if your OS provides it.
 - Storage: Images can fill the SD card. The app enforces `SC_MAX_SAVED_IMAGES`; adjust to your capacity.
 - Service: To run on boot, wrap `python3 /path/to/main.py` in a `systemd` service.
 - Startup: Flask now starts even if the camera backend is slow or failing; set `SC_CAMERA_BACKEND=v4l2` to force OpenCV/V4L2 if Picamera2 causes startup issues.
- - NOIR (IR) cameras: Colors are unreliable under IR illumination. Prefer `SC_NOIR_RENDER_MODE=mono` for clear grayscale images and more stable detection. If you need color, set `SC_NOIR_RENDER_MODE=correct` and tune `SC_NOIR_COLOUR_GAIN_R/B`.
+ - NOIR (IR) cameras: Under IR illumination, colors are unreliable. In `noir` profile the app renders grayscale always (no color mode).
 
 systemd Service (Auto-start on Boot)
 ------------------------------------
