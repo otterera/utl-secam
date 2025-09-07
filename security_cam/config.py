@@ -45,11 +45,7 @@ class Config:
 
     # Detection
     DETECT_EVERY_N_FRAMES = int(os.getenv("SC_DETECT_EVERY_N_FRAMES", 5))  # Run detector every N frames
-    DETECTOR_MIN_WIDTH = int(os.getenv("SC_DETECTOR_MIN_WIDTH", 48))  # Minimum person width
-    DETECTOR_MIN_HEIGHT = int(os.getenv("SC_DETECTOR_MIN_HEIGHT", 96))  # Minimum person height
-    DETECTOR_STRIDE = int(os.getenv("SC_DETECTOR_STRIDE", 8))  # HOG winStride step size
-    DETECTOR_SCALE = float(os.getenv("SC_DETECTOR_SCALE", 1.05))  # HOG pyramid scale factor
-    DETECTOR_HIT_THRESHOLD = float(os.getenv("SC_DETECTOR_HIT_THRESHOLD", 0))  # HOG SVM hit threshold
+    # Legacy HOG-related settings removed (stride/scale/min size/threshold)
     # Detector backend: only motion is supported
     DETECTOR_BACKEND = "motion"
 

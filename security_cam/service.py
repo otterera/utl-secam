@@ -57,10 +57,7 @@ class SecurityCamService:
         # Adaptive internals
         self._detect_stride_base = max(1, self.config.DETECT_EVERY_N_FRAMES)
         self._detect_stride_dyn = self._detect_stride_base
-        self._hit_threshold_base = self.config.DETECTOR_HIT_THRESHOLD
-        self._hit_threshold_dyn = self._hit_threshold_base
-        self._min_size_base = (self.config.DETECTOR_MIN_WIDTH, self.config.DETECTOR_MIN_HEIGHT)
-        self._min_size_dyn = self._min_size_base
+        # Legacy HOG-related dynamic parameters removed
         self._exp_mean_ema = 0.0
         self._exp_low_clip_ema = 0.0
         self._exp_high_clip_ema = 0.0
@@ -200,7 +197,7 @@ class SecurityCamService:
             self.state.armed = self.schedule.is_active_now()
 
             self.state.detect_stride = int(self._detect_stride_dyn)
-            self.state.hit_threshold = float(self._hit_threshold_dyn)
+            self.state.hit_threshold = 0.0
 
             # detection throttling (cadence may be adapted by exposure)
             if frame_idx % max(1, int(self._detect_stride_dyn)) == 0:
@@ -211,11 +208,7 @@ class SecurityCamService:
                 )
                 if self.state.armed and not paused_for_adjust:
                     try:
-                        detections = self.detector.detect(
-                            proc,
-                            hit_threshold=self._hit_threshold_dyn,
-                            min_size=self._min_size_dyn,
-                        )
+                        detections = self.detector.detect(proc)
                     except Exception as e:
                         # Never let detection errors kill the capture loop
                         print(f"[secam] Detection error: {e}", flush=True)
@@ -288,15 +281,10 @@ class SecurityCamService:
 
         # Adapt parameters
         if exp_state in ("over", "under"):
-            self._hit_threshold_dyn = self._hit_threshold_base + self.config.ADAPT_HIT_THRESHOLD_DELTA
-            self._min_size_dyn = (
-                int(self._min_size_base[0] * self.config.ADAPT_MIN_SIZE_SCALE),
-                int(self._min_size_base[1] * self.config.ADAPT_MIN_SIZE_SCALE),
-            )
+            # No-op for motion backend
             self._detect_stride_dyn = int(max(1, self._detect_stride_base * self.config.ADAPT_DETECT_STRIDE_SCALE))
         else:
-            self._hit_threshold_dyn = self._hit_threshold_base
-            self._min_size_dyn = self._min_size_base
+            # No-op for motion backend
             self._detect_stride_dyn = self._detect_stride_base
 
         # Choose enhancement target with hold + blend to avoid flicker
