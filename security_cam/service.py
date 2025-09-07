@@ -317,30 +317,51 @@ class SecurityCamService:
         self._enh_beta = (1.0 - blend) * self._enh_beta + blend * target_beta
 
         # Decide whether to run camera-side adjustments now
-        run_adjust = True
+        run_adjust = False
         now2 = time.time()
         if self._detector_backend == "motion":
-            # Adjust on a fixed cadence and continue adjusting during the pause
-            # window so AE/gain/shutter can converge with several steps.
+            # 1) Periodic adjust window with brief pause to avoid false detections
             if now2 - self._adjust_last_ts >= float(self.config.MOTION_ADJUST_PERIOD_SEC):
                 self._adjust_last_ts = now2
                 self._adjust_pause_until = now2 + float(self.config.MOTION_ADJUST_PAUSE_SEC)
-                # Reset motion baseline so first post-adjust frame seeds it,
-                # avoiding a false trigger from global exposure/AE changes.
                 try:
                     self.detector.reset()
                 except Exception:
-                    # If detector lacks reset, fall back silently
                     pass
-                # Seed baseline when pause ends, so we capture a post-adjust frame
                 self._seed_at_resume = True
                 run_adjust = True
+            # 2) While paused, continue adjustments to let controls converge
             elif now2 < self._adjust_pause_until:
-                # Keep adjusting during the pause window (respecting each
-                # control's own update interval) to converge faster.
                 run_adjust = True
             else:
                 run_adjust = False
+
+            # 3) Failsafe: if still under/over and update intervals have elapsed,
+            # perform an out-of-band single step with a micro-pause + reseed to
+            # avoid comparing against pre-step baseline. This ensures continued
+            # progress even if a prior window failed to trigger again.
+            if not run_adjust and (self.state.exposure_state in ("under", "over")):
+                need_ev = (
+                    getattr(self, "_ev_last_update", 0.0) == 0.0 or
+                    (now2 - getattr(self, "_ev_last_update", 0.0)) >= float(self.config.AE_EV_UPDATE_INTERVAL_SEC)
+                ) and getattr(self.camera, "supports_ev", lambda: False)()
+                need_gain = (
+                    getattr(self, "_gain_last_update", 0.0) == 0.0 or
+                    (now2 - getattr(self, "_gain_last_update", 0.0)) >= float(self.config.GAIN_UPDATE_INTERVAL_SEC)
+                ) and getattr(self.camera, "supports_gain", lambda: False)()
+                need_shutter = (
+                    getattr(self, "_shutter_last_update", 0.0) == 0.0 or
+                    (now2 - getattr(self, "_shutter_last_update", 0.0)) >= float(self.config.SHUTTER_UPDATE_INTERVAL_SEC)
+                ) and getattr(self.camera, "supports_shutter", lambda: False)()
+                if need_ev or need_gain or need_shutter:
+                    # Use the configured pause length to keep semantics consistent
+                    self._adjust_pause_until = now2 + float(self.config.MOTION_ADJUST_PAUSE_SEC)
+                    try:
+                        self.detector.reset()
+                    except Exception:
+                        pass
+                    self._seed_at_resume = True
+                    run_adjust = True
 
         if run_adjust:
             # Try to adjust camera EV-bias (Picamera2 only) to help AE converge
