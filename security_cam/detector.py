@@ -260,11 +260,23 @@ class MultiHumanDetector:
         *,
         hit_threshold: float | None = None,
         min_size: Tuple[int, int] | None = None,
+        **_: Any,
     ) -> List[Detection]:
-        """Run combined person + face detection and merge results."""
+        """Run combined person + face detection and merge results.
+
+        Accepts and forwards optional thresholds to the HOG person detector.
+        """
         results: List[Detection] = []
-        # Person detection (HOG)
-        results.extend(self.person.detect(frame_bgr))
+        # Person detection (HOG); forward dynamic params if provided
+        try:
+            results.extend(self.person.detect(
+                frame_bgr,
+                hit_threshold=hit_threshold,
+                min_size=min_size,
+            ))
+        except Exception:
+            # Be defensive; continue with face detection if HOG fails
+            pass
         # Face detection (Haar)
         if self.face is not None:
             try:
