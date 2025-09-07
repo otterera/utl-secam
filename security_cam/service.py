@@ -135,10 +135,20 @@ class SecurityCamService:
     def _run(self) -> None:
         """Worker loop: read frames, adapt, detect, save, repeat."""
         frame_idx = 0
-        interval = 1.0 / max(1, self.config.CAPTURE_FPS)
+        frame_interval = 1.0 / max(1, self.config.CAPTURE_FPS)
+        next_frame_ts = time.time()
         # Initialize camera here so Flask can start even if camera blocks
         started = False
         while not self._stop.is_set():
+            # Pace the loop to respect CAPTURE_FPS precisely, regardless of processing time
+            now_loop = time.time()
+            if now_loop < next_frame_ts:
+                time.sleep(min(0.1, next_frame_ts - now_loop))
+                continue
+            # Schedule next frame time; if we fell behind, reset to avoid bursts
+            next_frame_ts += frame_interval
+            if next_frame_ts < now_loop:
+                next_frame_ts = now_loop + frame_interval
             if not started:
                 try:
                     self.camera.start()
@@ -246,8 +256,6 @@ class SecurityCamService:
                         self._face_consec_hits = 0
 
             frame_idx += 1
-            # Simple pacing to cap CPU
-            time.sleep(interval)
 
     def _update_exposure_and_adapt(self, frame: np.ndarray) -> None:
         """Update exposure metrics and adjust sensitivity/cadence accordingly."""
