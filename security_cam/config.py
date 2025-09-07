@@ -89,7 +89,7 @@ class Config:
     # Pause motion detection this long after an adjustment
     # 例えば3.0に設定した場合、自動調整後3秒間はモーション検出を一時停止します
     # これにより、自動調整を原因とする露出の急激な変化による誤検出を防ぎます
-    MOTION_ADJUST_PAUSE_SEC = float(os.getenv("SC_MOTION_ADJUST_PAUSE_SEC", 3.0))
+    MOTION_ADJUST_PAUSE_SEC = float(os.getenv("SC_MOTION_ADJUST_PAUSE_SEC", 1.2))
 
     # Saving
     # Normalize save directory: strip quotes/whitespace, expand ~ and $VARS, make absolute
