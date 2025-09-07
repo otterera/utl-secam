@@ -144,7 +144,6 @@ _INDEX_TEMPLATE = """
   <body>
     <header>
       <div style="display:flex; align-items:center; gap:8px">
-        <strong>sc</strong>
         {% if armed %}
           <span class="arm on">Armed</span>
         {% else %}
@@ -165,7 +164,7 @@ _INDEX_TEMPLATE = """
         {% endif %}
         <span class="pill cam">EV {{ '%.2f' % ev_bias }}</span>
         <span class="pill cam">Gain {{ '%.2f' % gain }}</span>
-        <span class="pill cam">Shutter {{ shutter_ms }} ms</span>
+        <span class="pill cam">Shtr {{ shutter_ms }} ms</span>
       </div>
       {% if alert_active %}
         <div class="alert on">MOTION DETECTED</div>
