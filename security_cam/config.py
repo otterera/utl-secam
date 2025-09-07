@@ -39,6 +39,11 @@ class Config:
     MOTION_DELTA_THRESH = int(os.getenv("SC_MOTION_DELTA_THRESH", 10))  # intensity threshold for diffs
     MOTION_DILATE_ITER = int(os.getenv("SC_MOTION_DILATE_ITER", 2))  # morphology to close gaps
     MOTION_MIN_PIXELS = int(os.getenv("SC_MOTION_MIN_PIXELS", 150))  # changed pixels to trigger (post-resize)
+    # When using motion backend, run camera auto-adjustments only on this cadence,
+    # and pause motion detection briefly during the adjustment window to avoid
+    # false triggers from brightness jumps.
+    MOTION_ADJUST_PERIOD_SEC = float(os.getenv("SC_MOTION_ADJUST_PERIOD_SEC", 180.0))
+    MOTION_ADJUST_PAUSE_SEC = float(os.getenv("SC_MOTION_ADJUST_PAUSE_SEC", 3.0))
 
     # Saving
     # Normalize save directory: strip quotes/whitespace, expand ~ and $VARS, make absolute

@@ -45,6 +45,7 @@ class SecurityCamService:
         self.config = Config
         self.camera: BaseCamera = make_camera()
         self.detector = get_detector(self.config.DETECTOR_BACKEND)
+        self._detector_backend = self.config.DETECTOR_BACKEND
         self.state = ServiceState()
         self.schedule = DailySchedule(self.config.ACTIVE_WINDOWS)
         self._thread: Optional[threading.Thread] = None
@@ -85,6 +86,9 @@ class SecurityCamService:
         self._colour_last_update: float = 0.0
         # Face detection debounce
         self._face_consec_hits: int = 0
+        # Motion-backend adjustment cadence and pause window
+        self._adjust_last_ts: float = 0.0
+        self._adjust_pause_until: float = 0.0
         # Initialize public state mirrors
         self.state.ev_bias = float(self._ev_bias)
         self.state.gain = float(self._gain_value)
@@ -192,7 +196,11 @@ class SecurityCamService:
             # detection throttling (cadence may be adapted by exposure)
             if frame_idx % max(1, int(self._detect_stride_dyn)) == 0:
                 detections = []
-                if self.state.armed:
+                # Pause motion detection during scheduled camera adjustments
+                paused_for_adjust = (
+                    self._detector_backend == "motion" and time.time() < self._adjust_pause_until
+                )
+                if self.state.armed and not paused_for_adjust:
                     try:
                         detections = self.detector.detect(
                             proc,
@@ -314,14 +322,27 @@ class SecurityCamService:
         self._enh_alpha = (1.0 - blend) * self._enh_alpha + blend * target_alpha
         self._enh_beta = (1.0 - blend) * self._enh_beta + blend * target_beta
 
-        # Try to adjust camera EV-bias (Picamera2 only) to help AE converge
-        self._maybe_adjust_ev(exp_state)
-        # Try to adjust analogue gain (Picamera2) to brighten/darken
-        self._maybe_adjust_gain(exp_state)
-        # Try to adjust shutter time up to 1s if very dark
-        self._maybe_adjust_shutter(exp_state)
-        # Try to adjust colour gains for NOIR 'correct' mode if enabled
-        self._maybe_adjust_colour_gains(frame)
+        # Decide whether to run camera-side adjustments now
+        run_adjust = True
+        now2 = time.time()
+        if self._detector_backend == "motion":
+            # Only adjust on a fixed cadence; pause motion detection briefly
+            if now2 - self._adjust_last_ts >= float(self.config.MOTION_ADJUST_PERIOD_SEC):
+                self._adjust_last_ts = now2
+                self._adjust_pause_until = now2 + float(self.config.MOTION_ADJUST_PAUSE_SEC)
+                run_adjust = True
+            else:
+                run_adjust = False
+
+        if run_adjust:
+            # Try to adjust camera EV-bias (Picamera2 only) to help AE converge
+            self._maybe_adjust_ev(exp_state)
+            # Try to adjust analogue gain (Picamera2) to brighten/darken
+            self._maybe_adjust_gain(exp_state)
+            # Try to adjust shutter time up to 1s if very dark
+            self._maybe_adjust_shutter(exp_state)
+            # Try to adjust colour gains for NOIR 'correct' mode if enabled
+            self._maybe_adjust_colour_gains(frame)
         # Mirror current camera controls into state for UI/API
         self.state.ev_bias = float(getattr(self, "_ev_bias", 0.0))
         self.state.gain = float(getattr(self, "_gain_value", 0.0))
