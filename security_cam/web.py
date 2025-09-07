@@ -113,7 +113,7 @@ _INDEX_TEMPLATE = """
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Raspberry Pi Security Cam</title>
+  <title>Security Cam</title>
   <style>
     body { font-family: system-ui, Arial, sans-serif; margin: 0; background: #111; color: #eee; }
     header { padding: 12px 16px; background: #222; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -144,7 +144,7 @@ _INDEX_TEMPLATE = """
   <body>
     <header>
       <div style="display:flex; align-items:center; gap:8px">
-        <strong>Security Cam</strong>
+        <strong>sc</strong>
         {% if armed %}
           <span class="arm on">Armed</span>
         {% else %}

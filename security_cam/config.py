@@ -81,7 +81,13 @@ class Config:
     変化したピクセル数が SC_MOTION_MIN_PIXELS 以上なら、モーションと判定し、動いている領域のバウンディングボックスを返します。
     「どれくらいの領域が変化すればモーションとみなすか」の基準。"""
 
+    # Auto-adjustment cadence when using motion detection backend
+    # 例えば180.0に設定した場合、180秒ごとにカメラの自動調整を実行します
+    # 自動調整は例えば、露出やホワイトバランスの再調整を含みます
     MOTION_ADJUST_PERIOD_SEC = float(os.getenv("SC_MOTION_ADJUST_PERIOD_SEC", 180.0))
+    # Pause motion detection this long after an adjustment
+    # 例えば3.0に設定した場合、自動調整後3秒間はモーション検出を一時停止します
+    # これにより、自動調整を原因とする露出の急激な変化による誤検出を防ぎます
     MOTION_ADJUST_PAUSE_SEC = float(os.getenv("SC_MOTION_ADJUST_PAUSE_SEC", 3.0))
 
     # Saving
