@@ -11,7 +11,7 @@ import numpy as np
 
 from .camera import BaseCamera, make_camera
 from .config import Config
-from .detector import get_detector
+from .detector import MotionDetector
 from .schedule import DailySchedule
 
 
@@ -44,8 +44,8 @@ class SecurityCamService:
         """Initialize components, state, and adaptive tuning caches."""
         self.config = Config
         self.camera: BaseCamera = make_camera()
-        self.detector = get_detector(self.config.DETECTOR_BACKEND)
-        self._detector_backend = self.config.DETECTOR_BACKEND
+        self.detector = MotionDetector()
+        self._detector_backend = "motion"
         self.state = ServiceState()
         self.schedule = DailySchedule(self.config.ACTIVE_WINDOWS)
         self._thread: Optional[threading.Thread] = None
@@ -84,8 +84,7 @@ class SecurityCamService:
         self._colour_r: float = float(getattr(self.config, "NOIR_COLOUR_GAIN_R", 1.5))
         self._colour_b: float = float(getattr(self.config, "NOIR_COLOUR_GAIN_B", 1.5))
         self._colour_last_update: float = 0.0
-        # Face detection debounce
-        self._face_consec_hits: int = 0
+        # Face detection debounce (removed with non-motion detectors)
         # Motion-backend adjustment cadence and pause window
         self._adjust_last_ts: float = 0.0
         self._adjust_pause_until: float = 0.0
@@ -235,17 +234,8 @@ class SecurityCamService:
                         self.state.person_count = persons
                         self.state.face_count = faces
                         self.state.last_kinds = kinds
-                        # Debounce: require consecutive frames for face-only detections
-                        if faces and not persons and self.config.FACE_CONSEC_FRAMES > 1:
-                            self._face_consec_hits += 1
-                            if self._face_consec_hits >= self.config.FACE_CONSEC_FRAMES:
-                                if self.config.SAVE_ON_DETECT:
-                                    self._maybe_save_frame(proc, detections)
-                                self._face_consec_hits = 0
-                        else:
-                            self._face_consec_hits = 0
-                            if self.config.SAVE_ON_DETECT:
-                                self._maybe_save_frame(proc, detections)
+                        if self.config.SAVE_ON_DETECT:
+                            self._maybe_save_frame(proc, detections)
                 # cooldown / idle state
                 if not detections:
                     if time.time() - self.state.last_detection_ts > self.config.ALERT_COOLDOWN_SEC:
@@ -253,7 +243,7 @@ class SecurityCamService:
                         self.state.person_count = 0
                         self.state.face_count = 0
                         self.state.last_kinds = []
-                        self._face_consec_hits = 0
+                        pass
 
             frame_idx += 1
 

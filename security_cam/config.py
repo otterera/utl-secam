@@ -44,14 +44,14 @@ class Config:
     CAMERA_PROFILE = os.getenv("SC_CAMERA_PROFILE", "standard").strip().lower()  # standard|noir
 
     # Detection
-    DETECT_EVERY_N_FRAMES = int(os.getenv("SC_DETECT_EVERY_N_FRAMES", 1))  # Run detector every N frames
+    DETECT_EVERY_N_FRAMES = int(os.getenv("SC_DETECT_EVERY_N_FRAMES", 5))  # Run detector every N frames
     DETECTOR_MIN_WIDTH = int(os.getenv("SC_DETECTOR_MIN_WIDTH", 48))  # Minimum person width
     DETECTOR_MIN_HEIGHT = int(os.getenv("SC_DETECTOR_MIN_HEIGHT", 96))  # Minimum person height
     DETECTOR_STRIDE = int(os.getenv("SC_DETECTOR_STRIDE", 8))  # HOG winStride step size
     DETECTOR_SCALE = float(os.getenv("SC_DETECTOR_SCALE", 1.05))  # HOG pyramid scale factor
     DETECTOR_HIT_THRESHOLD = float(os.getenv("SC_DETECTOR_HIT_THRESHOLD", 0))  # HOG SVM hit threshold
-    # Which detector backend to use: 'multi' (HOG+face) or 'motion' (frame differencing)
-    DETECTOR_BACKEND = os.getenv("SC_DETECTOR_BACKEND", "multi").strip().lower()  # multi|motion
+    # Detector backend: only motion is supported
+    DETECTOR_BACKEND = "motion"
 
     # Motion detector (frame differencing) parameters
     MOTION_DOWNSCALE = float(os.getenv("SC_MOTION_DOWNSCALE", 1.0))  # 0.2..1.0, lower = faster/more smoothing
@@ -65,16 +65,7 @@ class Config:
     MOTION_ADJUST_PERIOD_SEC = float(os.getenv("SC_MOTION_ADJUST_PERIOD_SEC", 180.0))
     MOTION_ADJUST_PAUSE_SEC = float(os.getenv("SC_MOTION_ADJUST_PAUSE_SEC", 3.0))
 
-    # Background subtraction detector (MOG2/KNN) parameters
-    BG_METHOD = os.getenv("SC_BG_METHOD", "mog2").strip().lower()  # mog2|knn
-    BG_HISTORY = int(os.getenv("SC_BG_HISTORY", 200))
-    BG_VAR_THRESHOLD = float(os.getenv("SC_BG_VAR_THRESHOLD", 16.0))
-    BG_DETECT_SHADOWS = os.getenv("SC_BG_DETECT_SHADOWS", "1") == "1"
-    BG_DOWNSCALE = float(os.getenv("SC_BG_DOWNSCALE", 0.5))  # 0.2..1.0
-    BG_BLUR_KERNEL = int(os.getenv("SC_BG_BLUR_KERNEL", 5))  # odd int
-    BG_DILATE_ITER = int(os.getenv("SC_BG_DILATE_ITER", 2))
-    BG_MIN_PIXELS = _env_int("SC_BG_MIN_PIXELS", 150)
-    BG_LEARNING_RATE = float(os.getenv("SC_BG_LEARNING_RATE", -1.0))  # -1 for auto
+    # Background subtraction settings removed (only motion is supported)
 
     # Saving
     # Normalize save directory: strip quotes/whitespace, expand ~ and $VARS, make absolute
@@ -179,15 +170,4 @@ class Config:
     GAIN_RETURN_STEP = float(os.getenv("SC_GAIN_RETURN_STEP", 0.25))
     GAIN_UPDATE_INTERVAL_SEC = float(os.getenv("SC_GAIN_UPDATE_INTERVAL_SEC", 1.0))
 
-    # Face detection to complement HOG person detection
-    USE_FACE_DETECT = os.getenv("SC_USE_FACE_DETECT", "1") == "1"
-    FACE_SCALE_FACTOR = float(os.getenv("SC_FACE_SCALE_FACTOR", 1.12))
-    FACE_MIN_NEIGHBORS = int(os.getenv("SC_FACE_MIN_NEIGHBORS", 3))
-    FACE_MIN_SIZE = int(os.getenv("SC_FACE_MIN_SIZE", 24))  # min face size in pixels
-    # Alternative face backends: haar (default), lbp
-    FACE_BACKEND = os.getenv("SC_FACE_BACKEND", "haar").strip().lower()  # haar|lbp
-    # Preprocessing: apply CLAHE to grayscale before Haar/LBP (helps in dim/IR)
-    FACE_USE_CLAHE = os.getenv("SC_FACE_USE_CLAHE", "1") == "1"
-    FACE_MIN_SIZE_FRAC = float(os.getenv("SC_FACE_MIN_SIZE_FRAC", 0.08))  # fraction of min(frame_w,frame_h)
-    # Debounce: require N consecutive frames with faces before confirming
-    FACE_CONSEC_FRAMES = int(os.getenv("SC_FACE_CONSEC_FRAMES", 2))
+    # Face detection settings removed (only motion is supported)

@@ -1,15 +1,15 @@
-"""Human detection using OpenCV HOG and lightweight NMS.
+"""Motion-only detector (frame differencing).
 
-This module defines a small detection result dataclass, a NumPy-based NMS,
-and a `HumanDetector` that wraps OpenCV’s default people detector.
+Defines `Detection` and a `MotionDetector` that triggers when consecutive frames
+change beyond a configured threshold. All other detector types have been
+removed for simplicity and performance on the Raspberry Pi 3B.
 """
 
 from dataclasses import dataclass  # For structured detection results
 from typing import List, Tuple, Any  # Type hints
-import os  # For file existence checks
 
-import cv2  # OpenCV for HOG person detection
-import numpy as np  # Arrays and vectorized NMS
+import cv2  # OpenCV
+import numpy as np  # Arrays
 
 from .config import Config  # Tunable detector parameters
 
@@ -20,13 +20,13 @@ class Detection:
 
     Attributes:
       bbox: (x, y, w, h) bounding box in image coordinates.
-      score: Detector confidence score (if available).
-      kind: Label of detector type, e.g., 'person' or 'face'.
+      score: Detector score (use 1.0 for motion).
+      kind: Label of detector type, e.g., 'motion'.
     """
 
-    bbox: Tuple[int, int, int, int]  # x, y, w, h
-    score: float  # Detector score
-    kind: str  # e.g., 'person' or 'face'
+    bbox: Tuple[int, int, int, int]
+    score: float
+    kind: str
 
 
 def _nms(boxes: np.ndarray, scores: np.ndarray, iou_thresh: float = 0.4) -> List[int]:
@@ -72,71 +72,11 @@ def _nms(boxes: np.ndarray, scores: np.ndarray, iou_thresh: float = 0.4) -> List
     return keep
 
 
-class HumanDetector:
-    """HOG-based pedestrian detector with optional dynamic thresholds."""
+class MotionDetector:
+    """Simple frame-difference motion detector for recall-first detection."""
 
     def __init__(self) -> None:
-        """Initialize HOG descriptor with the default people SVM."""
-        self.hog = cv2.HOGDescriptor()  # Create HOG descriptor
-        self.hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())  # Load default SVM
-
-    def detect(
-        self,
-        frame_bgr: np.ndarray,
-        *,
-        hit_threshold: float | None = None,
-        min_size: Tuple[int, int] | None = None,
-    ) -> List[Detection]:
-        """Run HOG person detection on a BGR frame.
-
-        Args:
-          frame_bgr: Input frame in BGR order.
-          hit_threshold: Optional SVM hit threshold override.
-          min_size: Optional minimum box size `(min_w, min_h)` override.
-
-        Returns:
-          A list of `Detection` objects after non-maximum suppression.
-        """
-        # Optionally work on a smaller copy for speed
-        h, w = frame_bgr.shape[:2]  # Frame dimensions
-        scale_for_speed = 0.75 if max(h, w) > 640 else 1.0  # Scale large frames
-        if scale_for_speed != 1.0:
-            # Resize frame while preserving aspect ratio
-            small = cv2.resize(frame_bgr, (int(w * scale_for_speed), int(h * scale_for_speed)))
-        else:
-            small = frame_bgr  # Use original frame
-
-        # Run HOG detection
-        rects, weights = self.hog.detectMultiScale(
-            small,  # Possibly downscaled frame
-            winStride=(Config.DETECTOR_STRIDE, Config.DETECTOR_STRIDE),  # Step size
-            padding=(8, 8),  # Padding around detection window
-            scale=Config.DETECTOR_SCALE,  # Image pyramid scale
-            hitThreshold=(Config.DETECTOR_HIT_THRESHOLD if hit_threshold is None else hit_threshold),  # SVM thresh
-        )
-
-        detections: List[Detection] = []  # Collected detections
-        for (x, y, w0, h0), score in zip(rects, weights):  # Iterate boxes/scores
-            # Rescale bbox back to original frame size if we downscaled
-            if scale_for_speed != 1.0:
-                x = int(x / scale_for_speed)
-                y = int(y / scale_for_speed)
-                w0 = int(w0 / scale_for_speed)
-                h0 = int(h0 / scale_for_speed)
-            # Enforce minimum size thresholds
-            min_w = Config.DETECTOR_MIN_WIDTH if min_size is None else int(min_size[0])
-            min_h = Config.DETECTOR_MIN_HEIGHT if min_size is None else int(min_size[1])
-            if w0 < min_w or h0 < min_h:
-                continue  # Skip tiny boxes
-            detections.append(Detection((x, y, w0, h0), float(score), "person"))  # Add result
-
-        # Non-maximum suppression to reduce overlapping boxes
-        if detections:
-            boxes = np.array([(*d.bbox,) for d in detections]).astype(np.float32)  # Nx4 boxes
-            scores = np.array([d.score for d in detections]).astype(np.float32)  # N scores
-            keep = _nms(boxes, scores, iou_thresh=0.4)  # Indices to keep
-            detections = [d for i, d in enumerate(detections) if i in keep]  # Filtered list
-        return detections  # Final detections
+        self.prev: np.ndarray | None = None
 
 
 class _CascadeFaceDetector:
@@ -205,59 +145,7 @@ class LbpFaceDetector(_CascadeFaceDetector):
 ## DnnFaceDetector removed (DNN approach not used on Pi 3B)
 
 
-class MultiHumanDetector:
-    """Composite detector: HOG person + Haar face.
-
-    Triggers if either a person or a face is detected. Overlapping boxes are
-    reduced via NMS.
-    """
-
-    def __init__(self) -> None:
-        self.person = HumanDetector()
-        self.face = None
-        if Config.USE_FACE_DETECT:
-            backend = Config.FACE_BACKEND
-            if backend == "lbp":
-                self.face = LbpFaceDetector()
-            else:
-                self.face = HaarFaceDetector()
-
-    def detect(
-        self,
-        frame_bgr: np.ndarray,
-        *,
-        hit_threshold: float | None = None,
-        min_size: Tuple[int, int] | None = None,
-        **_: Any,
-    ) -> List[Detection]:
-        """Run combined person + face detection and merge results.
-
-        Accepts and forwards optional thresholds to the HOG person detector.
-        """
-        results: List[Detection] = []
-        # Person detection (HOG); forward dynamic params if provided
-        try:
-            results.extend(self.person.detect(
-                frame_bgr,
-                hit_threshold=hit_threshold,
-                min_size=min_size,
-            ))
-        except Exception:
-            # Be defensive; continue with face detection if HOG fails
-            pass
-        # Face detection (Haar)
-        if self.face is not None:
-            try:
-                results.extend(self.face.detect(frame_bgr))
-            except Exception:
-                pass
-        if not results:
-            return []
-        # NMS across mixed detections using their scores
-        boxes = np.array([(*d.bbox,) for d in results]).astype(np.float32)
-        scores = np.array([d.score for d in results]).astype(np.float32)
-        keep = _nms(boxes, scores, iou_thresh=0.4)
-        return [d for i, d in enumerate(results) if i in keep]
+## All non-motion detectors removed
 
 
 class MotionDetector:
