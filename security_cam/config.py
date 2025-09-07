@@ -44,7 +44,7 @@ class Config:
     CAMERA_PROFILE = os.getenv("SC_CAMERA_PROFILE", "noir").strip().lower()  # standard|noir
 
     # Detection
-    DETECT_EVERY_N_FRAMES = int(os.getenv("SC_DETECT_EVERY_N_FRAMES", 5))  # Run detector every N frames
+    DETECT_EVERY_N_FRAMES = int(os.getenv("SC_DETECT_EVERY_N_FRAMES", 1))  # Run detector every N frames
     # Legacy HOG-related settings removed (stride/scale/min size/threshold)
     # Detector backend: only motion is supported
     DETECTOR_BACKEND = "motion"
