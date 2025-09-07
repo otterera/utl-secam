@@ -107,7 +107,7 @@ class Config:
     # SAVE_ANNOTATED_ON_DETECT, but still parsed to avoid crashes in existing envs.
     ANNOTATE_SAVED = os.getenv("SC_ANNOTATE_SAVED", "1") == "1"
     # Optional additional raw (no-annotation) saves; default to SC_SAVE_DIR if RAW not provided
-    _SAVE_DIR_RAW2 = os.getenv("SC_SAVE_DIR_RAW", os.getenv("SC_SAVE_DIR", os.path.join("data", "captures_raw")))
+    _SAVE_DIR_RAW2 = os.getenv("SC_SAVE_DIR_RAW", os.path.join("data", "captures_raw"))
     _SAVE_DIR_RAW2_N = str(_SAVE_DIR_RAW2).strip().strip('"').strip("'")
     _SAVE_DIR_RAW2_N = os.path.expanduser(os.path.expandvars(_SAVE_DIR_RAW2_N))
     SAVE_DIR_RAW = os.path.abspath(_SAVE_DIR_RAW2_N) if not os.path.isabs(_SAVE_DIR_RAW2_N) else _SAVE_DIR_RAW2_N
