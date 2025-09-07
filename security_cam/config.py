@@ -5,6 +5,26 @@ are read from environment variables with sensible Raspberry Pi defaults.
 """
 
 import os  # Standard library for environment and filesystem helpers
+import re  # Robust parsing of numeric envs with comments/ranges
+
+
+def _env_int(name: str, default: int) -> int:
+    """Parse an integer from an environment variable robustly.
+
+    Accepts values like "150", "150 # comment", or "120〜180" and returns the
+    first integer found. Falls back to default if parsing fails.
+    """
+    val = os.getenv(name)
+    if val is None:
+        return default
+    s = str(val).strip().strip('"').strip("'")
+    m = re.search(r"-?\d+", s)
+    if not m:
+        return default
+    try:
+        return int(m.group(0))
+    except Exception:
+        return default
 
 
 class Config:
@@ -38,7 +58,7 @@ class Config:
     MOTION_BLUR_KERNEL = int(os.getenv("SC_MOTION_BLUR_KERNEL", 5))  # odd int
     MOTION_DELTA_THRESH = int(os.getenv("SC_MOTION_DELTA_THRESH", 10))  # intensity threshold for diffs
     MOTION_DILATE_ITER = int(os.getenv("SC_MOTION_DILATE_ITER", 2))  # morphology to close gaps
-    MOTION_MIN_PIXELS = int(os.getenv("SC_MOTION_MIN_PIXELS", 150))  # changed pixels to trigger (post-resize)
+    MOTION_MIN_PIXELS = _env_int("SC_MOTION_MIN_PIXELS", 150)  # changed pixels to trigger (post-resize)
     # When using motion backend, run camera auto-adjustments only on this cadence,
     # and pause motion detection briefly during the adjustment window to avoid
     # false triggers from brightness jumps.
@@ -53,7 +73,7 @@ class Config:
     BG_DOWNSCALE = float(os.getenv("SC_BG_DOWNSCALE", 0.5))  # 0.2..1.0
     BG_BLUR_KERNEL = int(os.getenv("SC_BG_BLUR_KERNEL", 5))  # odd int
     BG_DILATE_ITER = int(os.getenv("SC_BG_DILATE_ITER", 2))
-    BG_MIN_PIXELS = int(os.getenv("SC_BG_MIN_PIXELS", 150))
+    BG_MIN_PIXELS = _env_int("SC_BG_MIN_PIXELS", 150)
     BG_LEARNING_RATE = float(os.getenv("SC_BG_LEARNING_RATE", -1.0))  # -1 for auto
 
     # Saving
