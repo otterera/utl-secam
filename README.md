@@ -3,12 +3,12 @@ Raspberry Pi Security Camera (Python)
 
 Features
 --------
-- Human detection using OpenCV HOG people detector
-- Saves many annotated pictures when a human is detected
-- Simple Flask dashboard with a warning banner, live frame, and recent gallery
+- Motion detection (frame differencing), tuned for Raspberry Pi 3B
+- Saves annotated captures (with boxes) and/or raw copies (no overlays)
+- Simple Flask dashboard with a warning banner, live view, and recent gallery
 - Lightweight and configurable for Raspberry Pi 3B
 - Optional daily arming schedule (e.g., 22:00-06:00)
-- Adaptive sensitivity: detects over/under exposure and auto-tunes detection thresholds to reduce false positives and CPU when scenes are too bright/dark.
+- Adaptive exposure control with motion-aware cadence to avoid false triggers
 
 Requirements
 ------------
@@ -50,62 +50,39 @@ You should see:
 
 Configuration
 -------------
-Tune behavior using environment variables (defaults shown):
+Tune behavior using environment variables (defaults shown). Only the motion detector is supported.
 
-- `SC_FRAME_WIDTH=640` / `SC_FRAME_HEIGHT=480`: Capture resolution
-- `SC_CAPTURE_FPS=10`: Target FPS
-- `SC_DETECT_EVERY_N_FRAMES=2`: Run detector every Nth frame
-- `SC_SAVE_DIR=data/captures`: Directory for saved images
-- `SC_SAVE_INTERVAL_SEC=1.0`: Min seconds between saved frames
-- `SC_MAX_SAVED_IMAGES=2000`: Retention limit (oldest deleted)
-- `SC_ANNOTATE_SAVED=1`: Draw detection boxes/labels on saved images (`0` to disable)
-- `SC_ALERT_COOLDOWN_SEC=10.0`: How long to keep alert after last detection
-- `SC_GALLERY_LATEST_COUNT=12`: Images shown in dashboard gallery
-- `SC_HOST=0.0.0.0` / `SC_PORT=8000`: Server bind
-- `SC_DEBUG=0`: Set `1` to enable Flask debug
-- `SC_ACTIVE_WINDOWS=""`: Comma-separated daily windows to arm detection, e.g., `22:00-06:00` or `22:00-06:00,12:30-13:30`. Empty means always armed. Times use the Pi's local time.
-- `SC_CAMERA_BACKEND=auto`: Choose `picamera2`, `v4l2`, or `auto`.
-- `SC_CAMERA_PROFILE=standard` or `noir`: Select standard color camera or NOIR (infrared)
-- NOIR options:
-  - `SC_NOIR_RENDER_MODE=mono` (recommended under IR) or `correct`
-  - If `correct`:
-    - Use AWB: `SC_NOIR_USE_AWB=1` (better under visible light, not IR), or
-    - Auto colour gains (default):
-      - `SC_NOIR_AUTO_COLOUR=1`
-      - `SC_NOIR_COLOUR_ALPHA=0.2` (smoothing),
-      - `SC_NOIR_COLOUR_MIN=0.5` / `SC_NOIR_COLOUR_MAX=3.0`,
-      - `SC_NOIR_COLOUR_UPDATE_INTERVAL_SEC=2.0`
-    - Fixed gains (fallback): `SC_NOIR_COLOUR_GAIN_R=1.5`, `SC_NOIR_COLOUR_GAIN_B=1.5`
-- Adaptive sensitivity:
-  - `SC_ADAPTIVE_SENSITIVITY=1`: Enable exposure-aware tuning
-  - `SC_EXP_BRIGHT_MEAN=200` / `SC_EXP_DARK_MEAN=40`: Mean brightness cutoffs
-  - `SC_EXP_EMA_ALPHA=0.35`: Exposure smoothing factor (higher reacts faster)
-  - `SC_EXP_HIGH_CLIP_FRAC=0.05` / `SC_EXP_LOW_CLIP_FRAC=0.05`: Fraction of pixels near 255/0 to flag clipping
-  - `SC_ADAPT_HIT_THRESHOLD_DELTA=0.5`: Extra HOG hit threshold when exposure is poor
-  - `SC_ADAPT_MIN_SIZE_SCALE=1.2`: Scale min person size under poor exposure
-  - `SC_ADAPT_DETECT_STRIDE_SCALE=2.0`: Multiply detection cadence under poor exposure
-- Optional frame enhancement (applied when exposure is poor):
-  - `SC_ENHANCE_ON_UNDER=1`, `SC_ENHANCE_UNDER_ALPHA=1.5`, `SC_ENHANCE_UNDER_BETA=20`
-  - `SC_ENHANCE_ON_OVER=1`, `SC_ENHANCE_OVER_ALPHA=0.85`, `SC_ENHANCE_OVER_BETA=-10`
-- Camera-side auto-exposure EV-bias (Picamera2 only):
-  - `SC_AE_EV_ADAPT_ENABLE=1`
-  - `SC_AE_EV_MIN=-2.0` / `SC_AE_EV_MAX=2.0`: EV clamp
-  - `SC_AE_EV_STEP=0.2`: Step toward brighter/darker when under/over
-  - `SC_AE_EV_RETURN_STEP=0.1`: Step back toward 0 when normal
-  - `SC_AE_EV_UPDATE_INTERVAL_SEC=1.0`: Min seconds between EV changes
- - Camera analogue gain adaptation (Picamera2 only):
-   - `SC_GAIN_ADAPT_ENABLE=1`
-   - `SC_GAIN_MIN=1.0` / `SC_GAIN_MAX=8.0`: Gain clamp
-  - `SC_GAIN_STEP=0.5`: Step toward brighter/darker when under/over
-  - `SC_GAIN_RETURN_STEP=0.25`: Step back toward 1.0 when normal
-  - `SC_GAIN_UPDATE_INTERVAL_SEC=1.0`: Min seconds between gain changes
- - Shutter (exposure time) adaptation (Picamera2 only):
-   - `SC_SHUTTER_ADAPT_ENABLE=0` (set to `1` to enable)
-   - `SC_SHUTTER_MIN_US=5000` / `SC_SHUTTER_MAX_US=1000000` (up to 1s)
-   - `SC_SHUTTER_STEP_US=20000`: Increase per update when under-exposed
-   - `SC_SHUTTER_RETURN_STEP_US=10000`: Decrease per update when normal/over
-   - `SC_SHUTTER_BASE_US=10000`: Target when returning to normal (~1/100s)
-   - `SC_SHUTTER_UPDATE_INTERVAL_SEC=1.0`: Min seconds between shutter changes
+Camera
+- `SC_CAMERA_BACKEND=auto` (or `picamera2`/`v4l2`)
+- `SC_CAMERA_PROFILE=standard|noir` (NOIR always grayscale)
+- `SC_FRAME_WIDTH=640` / `SC_FRAME_HEIGHT=480`
+- `SC_CAPTURE_FPS=10`
+- `SC_ROTATE_DEGREES=180` (0/90/180/270)
+
+Motion detector
+- `SC_DETECT_EVERY_N_FRAMES=5`: Run detector every Nth frame
+- `SC_MOTION_DOWNSCALE=1.0`: 0.2–1.0 (lower = faster + smoother)
+- `SC_MOTION_BLUR_KERNEL=3`: Odd blur kernel (3/5/7)
+- `SC_MOTION_DELTA_THRESH=50`: Pixel change threshold (0–255)
+- `SC_MOTION_DILATE_ITER=2`: Dilate iterations to close gaps
+- `SC_MOTION_MIN_PIXELS=250`: Pixels changed (after downscale) to trigger
+- Motion-aware exposure cadence: `SC_MOTION_ADJUST_PERIOD_SEC=180.0`, `SC_MOTION_ADJUST_PAUSE_SEC=3.0`
+
+Saving
+- `SC_SAVE_DIR=data/captures`: Annotated output folder
+- `SC_SAVE_DIR_RAW=data/captures_raw`: Raw (no overlays) output folder
+- `SC_SAVE_ANNOTATED_ON_DETECT=1` / `SC_SAVE_RAW_ON_DETECT=1`
+- `SC_SAVE_INTERVAL_SEC=1.0`
+- `SC_MAX_SAVED_IMAGES=2000`
+
+Adaptive exposure (Picamera2)
+- `SC_ADAPTIVE_SENSITIVITY=1`
+- `SC_EXP_BRIGHT_MEAN=200` / `SC_EXP_DARK_MEAN=40` / `SC_EXP_DARK_MEAN_EXIT=50`
+- `SC_EXP_EMA_ALPHA=0.35`, `SC_EXP_HIGH_CLIP_FRAC=0.05`, `SC_EXP_LOW_CLIP_FRAC=0.05`
+- Frame enhancement: `SC_ENHANCE_UNDER_ALPHA=2.5`, `SC_ENHANCE_UNDER_BETA=20`, blending/hold via `SC_ENHANCE_BLEND_ALPHA`, `SC_ENHANCE_HOLD_SEC`
+- EV: `SC_AE_EV_ADAPT_ENABLE=1`, `SC_AE_EV_MIN`, `SC_AE_EV_MAX`, `SC_AE_EV_STEP`, `SC_AE_EV_RETURN_STEP`, `SC_AE_EV_UPDATE_INTERVAL_SEC`
+- Gain: `SC_GAIN_ADAPT_ENABLE=1`, `SC_GAIN_MIN`, `SC_GAIN_MAX`, `SC_GAIN_STEP`, `SC_GAIN_RETURN_STEP`, `SC_GAIN_UPDATE_INTERVAL_SEC`
+- Shutter: `SC_SHUTTER_ADAPT_ENABLE=0|1`, `SC_SHUTTER_MIN_US`, `SC_SHUTTER_MAX_US`, `SC_SHUTTER_STEP_US`, `SC_SHUTTER_RETURN_STEP_US`, `SC_SHUTTER_BASE_US`, `SC_SHUTTER_UPDATE_INTERVAL_SEC`
 
 Notes and Tips
 --------------
