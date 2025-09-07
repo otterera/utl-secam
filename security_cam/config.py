@@ -44,7 +44,7 @@ class Config:
     CAMERA_PROFILE = os.getenv("SC_CAMERA_PROFILE", "standard").strip().lower()  # standard|noir
 
     # Detection
-    DETECT_EVERY_N_FRAMES = int(os.getenv("SC_DETECT_EVERY_N_FRAMES", 2))  # Run detector every N frames
+    DETECT_EVERY_N_FRAMES = int(os.getenv("SC_DETECT_EVERY_N_FRAMES", 1))  # Run detector every N frames
     DETECTOR_MIN_WIDTH = int(os.getenv("SC_DETECTOR_MIN_WIDTH", 48))  # Minimum person width
     DETECTOR_MIN_HEIGHT = int(os.getenv("SC_DETECTOR_MIN_HEIGHT", 96))  # Minimum person height
     DETECTOR_STRIDE = int(os.getenv("SC_DETECTOR_STRIDE", 8))  # HOG winStride step size
