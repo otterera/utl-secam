@@ -82,7 +82,7 @@ class SecurityCamService:
         # Motion-backend adjustment cadence and pause window
         self._adjust_last_ts: float = 0.0
         self._adjust_pause_until: float = 0.0
-        self._need_seed_baseline: bool = False
+        self._seed_at_resume: bool = False
         # Initialize public state mirrors
         self.state.ev_bias = float(self._ev_bias)
         self.state.gain = float(self._gain_value)
@@ -197,16 +197,6 @@ class SecurityCamService:
             self.state.detect_stride = int(self._detect_stride_dyn)
             self.state.hit_threshold = 0.0
 
-            # If an adjustment window just began, seed the motion baseline
-            # immediately with the current processed frame so detection after the
-            # pause compares against the post-adjust state, not the pre-adjust state.
-            if self._need_seed_baseline:
-                try:
-                    self.detector.seed(proc)
-                except Exception:
-                    pass
-                self._need_seed_baseline = False
-
             # detection throttling (cadence may be adapted by exposure)
             if frame_idx % max(1, int(self._detect_stride_dyn)) == 0:
                 detections = []
@@ -214,7 +204,17 @@ class SecurityCamService:
                 paused_for_adjust = (
                     self._detector_backend == "motion" and time.time() < self._adjust_pause_until
                 )
-                if self.state.armed and not paused_for_adjust:
+                # If pause window ended and we owe a seed, seed now and skip this detection tick
+                seeded_now = False
+                if self._seed_at_resume and not paused_for_adjust:
+                    try:
+                        self.detector.seed(proc)
+                    except Exception:
+                        pass
+                    self._seed_at_resume = False
+                    seeded_now = True
+
+                if self.state.armed and not paused_for_adjust and not seeded_now:
                     try:
                         detections = self.detector.detect(proc)
                     except Exception as e:
@@ -331,9 +331,8 @@ class SecurityCamService:
                 except Exception:
                     # If detector lacks reset, fall back silently
                     pass
-                # And request an immediate baseline seeding from the next
-                # processed frame in the main loop.
-                self._need_seed_baseline = True
+                # Seed baseline when pause ends, so we capture a post-adjust frame
+                self._seed_at_resume = True
                 run_adjust = True
             else:
                 run_adjust = False
