@@ -87,6 +87,10 @@ fi
 echo "==> Creating capture directory and setting ownership"
 mkdir -p "$SAVE_DIR"
 chown -R "$USER_NAME":"$USER_NAME" "$PROJECT_DIR"
+# If SAVE_DIR is outside the project directory, ensure ownership as well
+if [[ ! "$SAVE_DIR" =~ ^$PROJECT_DIR(/|$) ]]; then
+  chown -R "$USER_NAME":"$USER_NAME" "$SAVE_DIR" || true
+fi
 
 echo "==> Installing systemd unit"
 UNIT_SRC="$PROJECT_DIR/packaging/systemd/raspi-security-cam.service"
@@ -104,9 +108,12 @@ sed -i -E \
 echo "==> Installing environment file at /etc/default/raspi-security-cam"
 ENV_DST="/etc/default/raspi-security-cam"
 cp "$PROJECT_DIR/packaging/systemd/raspi-security-cam.env.example" "$ENV_DST"
+# Escape sed replacement special chars (&) in paths/values
+ESC_SAVE_DIR=${SAVE_DIR//&/\\&}
+ESC_PORT=${PORT//&/\\&}
 sed -i -E \
-  -e "s|^SC_PORT=.*$|SC_PORT=$PORT|" \
-  -e "s|^SC_SAVE_DIR=.*$|SC_SAVE_DIR=$SAVE_DIR|" \
+  -e "s|^SC_PORT=.*$|SC_PORT=${ESC_PORT}|" \
+  -e "s|^SC_SAVE_DIR=.*$|SC_SAVE_DIR=${ESC_SAVE_DIR}|" \
   "$ENV_DST"
 
 # ACTIVE_WINDOWS may contain special chars; append or replace more carefully
@@ -135,17 +142,16 @@ if [[ "$ALLOW_UFW" != "skip" ]]; then
   fi
 fi
 
-echo "==> Attempting to ensure camera interface is enabled (best-effort)"
-if command -v raspi-config >/dev/null 2>&1; then
-  # This enables the legacy camera; with modern Picamera2/libcamera this may be unnecessary
-  if raspi-config nonint get_camera >/dev/null 2>&1; then
-    raspi-config nonint do_camera 0 || true
-  fi
-else
-  echo "(info) raspi-config not found; ensure camera is enabled via Raspberry Pi config." >&2
+echo "==> Ensuring service user has camera access"
+# Picamera2/libcamera requires membership in the 'video' group
+if ! id -nG "$USER_NAME" | tr ' ' '\n' | grep -qx "video"; then
+  usermod -aG video "$USER_NAME" || true
+  echo "(info) Added $USER_NAME to 'video' group for camera access" >&2
 fi
+
+echo "(info) Not toggling legacy camera via raspi-config to avoid conflicts with Picamera2/libcamera."
+echo "       Use 'sudo raspi-config' to verify camera enablement if needed."
 
 echo "==> Done"
 echo "Service status: systemctl status raspi-security-cam --no-pager"
 echo "Open dashboard at: http://<pi-ip>:${PORT}/"
-
