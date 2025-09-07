@@ -135,6 +135,7 @@ _INDEX_TEMPLATE = """
     .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
     .card { background: #1b1b1b; padding: 8px; border-radius: 8px; }
     img { width: 100%; height: auto; border-radius: 6px; display: block; }
+    .grid img { cursor: zoom-in; }
     .live { max-width: 640px; margin-bottom: 16px; }
     .meta { color: #9aa; font-size: 12px; }
   </style>
@@ -181,7 +182,11 @@ _INDEX_TEMPLATE = """
       <div class="meta">From: {{save_dir}}</div>
       <div class="grid">
         {% for f in latest_files %}
-          <div class="card"><img src="{{ url_for('captures', filename=f) }}?ts={{ts}}" alt="{{f}}" /></div>
+          <div class="card">
+            <a href="{{ url_for('captures', filename=f) }}" target="_blank" rel="noopener">
+              <img src="{{ url_for('captures', filename=f) }}?ts={{ts}}" alt="{{f}}" />
+            </a>
+          </div>
         {% else %}
           <div class="meta">No captures yet.</div>
         {% endfor %}
