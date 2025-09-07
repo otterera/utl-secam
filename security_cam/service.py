@@ -313,6 +313,13 @@ class SecurityCamService:
             if now2 - self._adjust_last_ts >= float(self.config.MOTION_ADJUST_PERIOD_SEC):
                 self._adjust_last_ts = now2
                 self._adjust_pause_until = now2 + float(self.config.MOTION_ADJUST_PAUSE_SEC)
+                # Reset motion baseline so first post-adjust frame seeds it,
+                # avoiding a false trigger from global exposure/AE changes.
+                try:
+                    self.detector.reset()
+                except Exception:
+                    # If detector lacks reset, fall back silently
+                    pass
                 run_adjust = True
             else:
                 run_adjust = False

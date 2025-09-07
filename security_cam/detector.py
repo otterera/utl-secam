@@ -40,6 +40,15 @@ class MotionDetector:
     def __init__(self) -> None:
         self.prev: np.ndarray | None = None
 
+    def reset(self) -> None:
+        """Reset the motion baseline so the next frame seeds it without detecting.
+
+        Use this when camera parameters (exposure/gain/shutter) change so that
+        detection does not trigger on global brightness jumps unrelated to real
+        motion.
+        """
+        self.prev = None
+
     def _prep(self, frame_bgr: np.ndarray) -> tuple[np.ndarray, float]:
         gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
         scale = float(max(0.1, min(1.0, Config.MOTION_DOWNSCALE)))
