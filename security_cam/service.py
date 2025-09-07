@@ -554,16 +554,25 @@ class SecurityCamService:
             cv2.imwrite(path, annotated)
             self.state.saved_images_count += 1
             self._last_saved_ts = now
-            self._enforce_retention()
+            self._enforce_retention(self.config.SAVE_DIR)
         except Exception:
             pass
+        # Also save raw (no-annotation) copy if configured
+        if self.config.SAVE_RAW_ON_DETECT:
+            try:
+                raw_path = os.path.join(self.config.SAVE_DIR_RAW, filename)
+                cv2.imwrite(raw_path, frame)
+                self._enforce_retention(self.config.SAVE_DIR_RAW)
+            except Exception:
+                pass
 
-    def _enforce_retention(self) -> None:
-        """Keep only the newest MAX_SAVED_IMAGES by deleting oldest files."""
+    def _enforce_retention(self, folder: Optional[str] = None) -> None:
+        """Keep only the newest MAX_SAVED_IMAGES by deleting oldest files in a folder."""
+        base = folder or self.config.SAVE_DIR
         try:
             files = [
-                os.path.join(self.config.SAVE_DIR, f)
-                for f in os.listdir(self.config.SAVE_DIR)
+                os.path.join(base, f)
+                for f in os.listdir(base)
                 if f.lower().endswith(".jpg")
             ]
         except FileNotFoundError:

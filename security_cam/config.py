@@ -54,11 +54,11 @@ class Config:
     DETECTOR_BACKEND = os.getenv("SC_DETECTOR_BACKEND", "multi").strip().lower()  # multi|motion
 
     # Motion detector (frame differencing) parameters
-    MOTION_DOWNSCALE = float(os.getenv("SC_MOTION_DOWNSCALE", 0.5))  # 0.2..1.0, lower = faster/more smoothing
-    MOTION_BLUR_KERNEL = int(os.getenv("SC_MOTION_BLUR_KERNEL", 5))  # odd int
-    MOTION_DELTA_THRESH = int(os.getenv("SC_MOTION_DELTA_THRESH", 10))  # intensity threshold for diffs
+    MOTION_DOWNSCALE = float(os.getenv("SC_MOTION_DOWNSCALE", 1.0))  # 0.2..1.0, lower = faster/more smoothing
+    MOTION_BLUR_KERNEL = int(os.getenv("SC_MOTION_BLUR_KERNEL", 3))  # odd int
+    MOTION_DELTA_THRESH = int(os.getenv("SC_MOTION_DELTA_THRESH", 50))  # intensity threshold for diffs
     MOTION_DILATE_ITER = int(os.getenv("SC_MOTION_DILATE_ITER", 2))  # morphology to close gaps
-    MOTION_MIN_PIXELS = _env_int("SC_MOTION_MIN_PIXELS", 150)  # changed pixels to trigger (post-resize)
+    MOTION_MIN_PIXELS = _env_int("SC_MOTION_MIN_PIXELS", 250)  # changed pixels to trigger (post-resize)
     # When using motion backend, run camera auto-adjustments only on this cadence,
     # and pause motion detection briefly during the adjustment window to avoid
     # false triggers from brightness jumps.
@@ -86,6 +86,12 @@ class Config:
     SAVE_INTERVAL_SEC = float(os.getenv("SC_SAVE_INTERVAL_SEC", 1.0))  # Minimum seconds between saves
     MAX_SAVED_IMAGES = int(os.getenv("SC_MAX_SAVED_IMAGES", 2000))  # Retention limit for saved images
     ANNOTATE_SAVED = os.getenv("SC_ANNOTATE_SAVED", "1") == "1"  # Draw boxes/labels on saved captures
+    # Optional additional raw (no-annotation) saves; default to SC_SAVE_DIR if RAW not provided
+    _SAVE_DIR_RAW2 = os.getenv("SC_SAVE_DIR_RAW", os.getenv("SC_SAVE_DIR", os.path.join("data", "captures_raw")))
+    _SAVE_DIR_RAW2_N = str(_SAVE_DIR_RAW2).strip().strip('"').strip("'")
+    _SAVE_DIR_RAW2_N = os.path.expanduser(os.path.expandvars(_SAVE_DIR_RAW2_N))
+    SAVE_DIR_RAW = os.path.abspath(_SAVE_DIR_RAW2_N) if not os.path.isabs(_SAVE_DIR_RAW2_N) else _SAVE_DIR_RAW2_N
+    SAVE_RAW_ON_DETECT = os.getenv("SC_SAVE_RAW_ON_DETECT", "1") == "1"
 
     # Dashboard
     ALERT_COOLDOWN_SEC = float(os.getenv("SC_ALERT_COOLDOWN_SEC", 10.0))  # Keep alert banner visible this long
