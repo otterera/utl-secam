@@ -82,14 +82,15 @@ class Config:
     変化したピクセル数が SC_MOTION_MIN_PIXELS 以上なら、モーションと判定し、動いている領域のバウンディングボックスを返します。
     「どれくらいの領域が変化すればモーションとみなすか」の基準。"""
 
-    # Auto-adjustment cadence when using motion detection backend
-    # 例えば180.0に設定した場合、180秒ごとにカメラの自動調整を実行します
-    # 自動調整は例えば、露出やホワイトバランスの再調整を含みます
     MOTION_ADJUST_PERIOD_SEC = float(os.getenv("SC_MOTION_ADJUST_PERIOD_SEC", 180.0))
-    # Pause motion detection this long after an adjustment
-    # 例えば3.0に設定した場合、自動調整後3秒間はモーション検出を一時停止します
-    # これにより、自動調整を原因とする露出の急激な変化による誤検出を防ぎます
+    """ Auto-adjustment cadence when using motion detection backend
+    例えば180.0に設定した場合、180秒ごとにカメラの自動調整を実行します
+    自動調整は例えば、露出やホワイトバランスの再調整を含みます"""
+
     MOTION_ADJUST_PAUSE_SEC = float(os.getenv("SC_MOTION_ADJUST_PAUSE_SEC", 0.5))
+    """ Pause motion detection this long after an adjustment
+    例えば3.0に設定した場合、自動調整後3秒間はモーション検出を一時停止します
+    これにより、自動調整を原因とする露出の急激な変化による誤検出を防ぎます"""
 
     # Saving
     # Normalize save directory: strip quotes/whitespace, expand ~ and $VARS, make absolute
@@ -99,7 +100,8 @@ class Config:
     SAVE_DIR = os.path.abspath(_SAVE_DIR_NORM) if not os.path.isabs(_SAVE_DIR_NORM) else _SAVE_DIR_NORM  # absolute path
     SAVE_ON_DETECT = os.getenv("SC_SAVE_ON_DETECT", "1") == "1"  # Save when a detection occurs
     SAVE_INTERVAL_SEC = float(os.getenv("SC_SAVE_INTERVAL_SEC", 1.0))  # Minimum seconds between saves
-    MAX_SAVED_IMAGES = int(os.getenv("SC_MAX_SAVED_IMAGES", 2000))  # Retention limit for saved images
+    MAX_SAVED_IMAGES = int(os.getenv("SC_MAX_SAVED_IMAGES", 100))  # Retention limit for saved images
+
     # Annotated and raw saving controls
     # Save an annotated copy (with boxes/labels) to SAVE_DIR
     SAVE_ANNOTATED_ON_DETECT = os.getenv("SC_SAVE_ANNOTATED_ON_DETECT", "1") == "1"
@@ -132,12 +134,12 @@ class Config:
 
     # Automatic shutter (exposure time) adaptation (Picamera2 only)
     SHUTTER_ADAPT_ENABLE = os.getenv("SC_SHUTTER_ADAPT_ENABLE", "0") == "1"
-    SHUTTER_MIN_US = int(os.getenv("SC_SHUTTER_MIN_US", 5000))  # 1/200s
-    SHUTTER_MAX_US = int(os.getenv("SC_SHUTTER_MAX_US", 930_000))  # up to 0.93 second
-    SHUTTER_STEP_US = int(os.getenv("SC_SHUTTER_STEP_US", 20_000))
-    SHUTTER_RETURN_STEP_US = int(os.getenv("SC_SHUTTER_RETURN_STEP_US", 10_000))
-    SHUTTER_BASE_US = int(os.getenv("SC_SHUTTER_BASE_US", 10_000))  # target when normal (~1/100s)
-    SHUTTER_UPDATE_INTERVAL_SEC = float(os.getenv("SC_SHUTTER_UPDATE_INTERVAL_SEC", 1.0))
+    SHUTTER_MIN_US = int(os.getenv("SC_SHUTTER_MIN_US", 5000))  # 1/200s (5 ms)  minimum
+    SHUTTER_MAX_US = int(os.getenv("SC_SHUTTER_MAX_US", 50_000))  # up to 1/20s (50 ms)  maximum
+    SHUTTER_STEP_US = int(os.getenv("SC_SHUTTER_STEP_US", 10_000))  # per adjustment step (10 ms)
+    SHUTTER_RETURN_STEP_US = int(os.getenv("SC_SHUTTER_RETURN_STEP_US", 5_000))  # move back toward base when normal (5 ms)
+    SHUTTER_BASE_US = int(os.getenv("SC_SHUTTER_BASE_US", 10_000))  # target when normal (~1/100s) (10 ms)
+    SHUTTER_UPDATE_INTERVAL_SEC = float(os.getenv("SC_SHUTTER_UPDATE_INTERVAL_SEC", 1.0))  # adjustment cadence
 
     # Adaptive sensitivity based on exposure (brightness) analysis
     ADAPTIVE_SENSITIVITY = os.getenv("SC_ADAPTIVE_SENSITIVITY", "1") == "1"  # Toggle adaptive behavior
