@@ -38,10 +38,10 @@ class Config:
     # Camera
     FRAME_WIDTH = int(os.getenv("SC_FRAME_WIDTH", 320))  # Capture width in pixels
     FRAME_HEIGHT = int(os.getenv("SC_FRAME_HEIGHT", 240))  # Capture height in pixels
-    CAPTURE_FPS = int(os.getenv("SC_CAPTURE_FPS", 1))  # Target FPS (kept low for Pi 3B CPU)
+    CAPTURE_FPS = int(os.getenv("SC_CAPTURE_FPS", 5))  # Target FPS (kept low for Pi 3B CPU)
     CAMERA_BACKEND = os.getenv("SC_CAMERA_BACKEND", "auto").strip().lower()  # Camera backend: auto|picamera2|v4l2
     # Camera profile: standard color camera vs. NOIR (infrared, no IR-cut)
-    CAMERA_PROFILE = os.getenv("SC_CAMERA_PROFILE", "standard").strip().lower()  # standard|noir
+    CAMERA_PROFILE = os.getenv("SC_CAMERA_PROFILE", "noir").strip().lower()  # standard|noir
 
     # Detection
     DETECT_EVERY_N_FRAMES = int(os.getenv("SC_DETECT_EVERY_N_FRAMES", 5))  # Run detector every N frames
@@ -87,7 +87,7 @@ class Config:
 
     # Dashboard
     ALERT_COOLDOWN_SEC = float(os.getenv("SC_ALERT_COOLDOWN_SEC", 10.0))  # Keep alert banner visible this long
-    GALLERY_LATEST_COUNT = int(os.getenv("SC_GALLERY_LATEST_COUNT", 12))  # Recent images shown on dashboard
+    GALLERY_LATEST_COUNT = int(os.getenv("SC_GALLERY_LATEST_COUNT", 20))  # Recent images shown on dashboard
     HOST = os.getenv("SC_HOST", "0.0.0.0")  # Flask bind host
     PORT = int(os.getenv("SC_PORT", 8000))  # Flask bind port
     DEBUG = os.getenv("SC_DEBUG", "0") == "1"  # Flask debug switch
@@ -100,22 +100,7 @@ class Config:
     # Rotate frames by this many degrees (allowed: 0, 90, 180, 270). Default: 180 for upside-down installs.
     ROTATE_DEGREES = int(os.getenv("SC_ROTATE_DEGREES", 180))
 
-    # NOIR (infrared) rendering and color correction
-    # When using NOIR, colors are unreliable; choose rendering mode:
-    #  - mono: render/detect in grayscale (recommended under IR illumination)
-    #  - correct: attempt color correction via fixed colour gains
-    NOIR_RENDER_MODE = os.getenv("SC_NOIR_RENDER_MODE", "mono").strip().lower()  # mono|correct
-    # Fixed colour gains for Picamera2 when NOIR and correction is desired
-    NOIR_COLOUR_GAIN_R = float(os.getenv("SC_NOIR_COLOUR_GAIN_R", 1.5))
-    NOIR_COLOUR_GAIN_B = float(os.getenv("SC_NOIR_COLOUR_GAIN_B", 1.5))
-    # Optional: use AWB even for NOIR in color mode (may still be unreliable under IR)
-    NOIR_USE_AWB = os.getenv("SC_NOIR_USE_AWB", "0") == "1"
-    # Optional: auto colour-balance for NOIR using gray-world (disables AWB)
-    NOIR_AUTO_COLOUR = os.getenv("SC_NOIR_AUTO_COLOUR", "1") == "1"
-    NOIR_COLOUR_ALPHA = float(os.getenv("SC_NOIR_COLOUR_ALPHA", 0.2))  # EMA smoothing
-    NOIR_COLOUR_MIN = float(os.getenv("SC_NOIR_COLOUR_MIN", 0.5))
-    NOIR_COLOUR_MAX = float(os.getenv("SC_NOIR_COLOUR_MAX", 3.0))
-    NOIR_COLOUR_UPDATE_INTERVAL_SEC = float(os.getenv("SC_NOIR_COLOUR_UPDATE_INTERVAL_SEC", 2.0))
+    # NOIR (infrared) handling: always render grayscale under IR
 
     # Automatic shutter (exposure time) adaptation (Picamera2 only)
     SHUTTER_ADAPT_ENABLE = os.getenv("SC_SHUTTER_ADAPT_ENABLE", "0") == "1"
