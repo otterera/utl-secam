@@ -85,7 +85,12 @@ class Config:
     SAVE_ON_DETECT = os.getenv("SC_SAVE_ON_DETECT", "1") == "1"  # Save when a detection occurs
     SAVE_INTERVAL_SEC = float(os.getenv("SC_SAVE_INTERVAL_SEC", 1.0))  # Minimum seconds between saves
     MAX_SAVED_IMAGES = int(os.getenv("SC_MAX_SAVED_IMAGES", 2000))  # Retention limit for saved images
-    ANNOTATE_SAVED = os.getenv("SC_ANNOTATE_SAVED", "1") == "1"  # Draw boxes/labels on saved captures
+    # Annotated and raw saving controls
+    # Save an annotated copy (with boxes/labels) to SAVE_DIR
+    SAVE_ANNOTATED_ON_DETECT = os.getenv("SC_SAVE_ANNOTATED_ON_DETECT", "1") == "1"
+    # Legacy switch (kept for backward compatibility). Ignored in favor of
+    # SAVE_ANNOTATED_ON_DETECT, but still parsed to avoid crashes in existing envs.
+    ANNOTATE_SAVED = os.getenv("SC_ANNOTATE_SAVED", "1") == "1"
     # Optional additional raw (no-annotation) saves; default to SC_SAVE_DIR if RAW not provided
     _SAVE_DIR_RAW2 = os.getenv("SC_SAVE_DIR_RAW", os.getenv("SC_SAVE_DIR", os.path.join("data", "captures_raw")))
     _SAVE_DIR_RAW2_N = str(_SAVE_DIR_RAW2).strip().strip('"').strip("'")
