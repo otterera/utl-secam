@@ -72,8 +72,8 @@ class Config:
     値が大きいほど穴埋めや近接領域の統合が進み、変化ピクセル数が増えます。
     1〜3が一般的、0は膨張なし（マスクが粗くなる）。"""
 
-    DEFALT_VALUE_MOTION_MIN_PIXELS = FRAME_WIDTH * FRAME_HEIGHT * 0.05
-    MOTION_MIN_PIXELS = _env_int("SC_MOTION_MIN_PIXELS", DEFALT_VALUE_MOTION_MIN_PIXELS)  # changed pixels to trigger (post-resize)
+    _DEFALT_VALUE_MOTION_MIN_PIXELS = FRAME_WIDTH * FRAME_HEIGHT * 0.05
+    MOTION_MIN_PIXELS = _env_int("SC_MOTION_MIN_PIXELS", _DEFALT_VALUE_MOTION_MIN_PIXELS)  # changed pixels to trigger (post-resize)
     # When using motion backend, run camera auto-adjustments only on this cadence,
     # and pause motion detection briefly during the adjustment window to avoid
     # false triggers from brightness jumps.
