@@ -49,6 +49,16 @@ class MotionDetector:
         """
         self.prev = None
 
+    def seed(self, frame_bgr: np.ndarray) -> None:
+        """Seed the baseline using the given frame, without producing detections.
+
+        This prepares `prev` to the preprocessed (grayscale/blurred/downscaled)
+        version of `frame_bgr`, so that the next call to `detect()` compares
+        against this snapshot instead of an older baseline.
+        """
+        cur, _ = self._prep(frame_bgr)
+        self.prev = cur
+
     def _prep(self, frame_bgr: np.ndarray) -> tuple[np.ndarray, float]:
         gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
         scale = float(max(0.1, min(1.0, Config.MOTION_DOWNSCALE)))
