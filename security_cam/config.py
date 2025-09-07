@@ -84,8 +84,6 @@ class Config:
     MOTION_ADJUST_PERIOD_SEC = float(os.getenv("SC_MOTION_ADJUST_PERIOD_SEC", 180.0))
     MOTION_ADJUST_PAUSE_SEC = float(os.getenv("SC_MOTION_ADJUST_PAUSE_SEC", 3.0))
 
-    # Background subtraction settings removed (only motion is supported)
-
     # Saving
     # Normalize save directory: strip quotes/whitespace, expand ~ and $VARS, make absolute
     _SAVE_DIR_RAW = os.getenv("SC_SAVE_DIR", os.path.join("data", "captures"))
@@ -110,7 +108,7 @@ class Config:
 
     # Dashboard
     ALERT_COOLDOWN_SEC = float(os.getenv("SC_ALERT_COOLDOWN_SEC", 10.0))  # Keep alert banner visible this long
-    GALLERY_LATEST_COUNT = int(os.getenv("SC_GALLERY_LATEST_COUNT", 20))  # Recent images shown on dashboard
+    GALLERY_LATEST_COUNT = int(os.getenv("SC_GALLERY_LATEST_COUNT", 18))  # Recent images shown on dashboard
     HOST = os.getenv("SC_HOST", "0.0.0.0")  # Flask bind host
     PORT = int(os.getenv("SC_PORT", 8000))  # Flask bind port
     DEBUG = os.getenv("SC_DEBUG", "0") == "1"  # Flask debug switch
@@ -173,5 +171,3 @@ class Config:
     GAIN_STEP = float(os.getenv("SC_GAIN_STEP", 0.5))
     GAIN_RETURN_STEP = float(os.getenv("SC_GAIN_RETURN_STEP", 0.25))
     GAIN_UPDATE_INTERVAL_SEC = float(os.getenv("SC_GAIN_UPDATE_INTERVAL_SEC", 1.0))
-
-    # Face detection settings removed (only motion is supported)
