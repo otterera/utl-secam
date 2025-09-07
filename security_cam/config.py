@@ -142,9 +142,9 @@ class Config:
     # Adaptive sensitivity based on exposure (brightness) analysis
     ADAPTIVE_SENSITIVITY = os.getenv("SC_ADAPTIVE_SENSITIVITY", "1") == "1"  # Toggle adaptive behavior
     EXP_BRIGHT_MEAN = float(os.getenv("SC_EXP_BRIGHT_MEAN", 200))  # Over-exposure mean threshold
-    EXP_DARK_MEAN = float(os.getenv("SC_EXP_DARK_MEAN", 70))  # Under-exposure mean threshold (enter)
+    EXP_DARK_MEAN = float(os.getenv("SC_EXP_DARK_MEAN", 50))  # Under-exposure mean threshold (enter)
     # Hysteresis: leave "under" only when mean exceeds EXIT threshold
-    EXP_DARK_MEAN_EXIT = float(os.getenv("SC_EXP_DARK_MEAN_EXIT", 80))
+    EXP_DARK_MEAN_EXIT = float(os.getenv("SC_EXP_DARK_MEAN_EXIT", 60))
     EXP_HIGH_CLIP_FRAC = float(os.getenv("SC_EXP_HIGH_CLIP_FRAC", 0.05))  # Fraction near max intensity
     EXP_LOW_CLIP_FRAC = float(os.getenv("SC_EXP_LOW_CLIP_FRAC", 0.03))   # Fraction near min intensity
     EXP_EMA_ALPHA = float(os.getenv("SC_EXP_EMA_ALPHA", 0.35))  # Smoothing factor for exposure metrics (0..1)
