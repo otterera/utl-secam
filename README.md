@@ -165,6 +165,29 @@ License
 -------
 No license specified; for personal use.
 
+Updated Configuration (Motion-only + NOIR Mono)
+-----------------------------------------------
+The app now uses only the motion detector (frame differencing). HOG/face and background subtraction detectors have been removed to simplify and improve performance on Raspberry Pi 3B. When using a NOIR camera, frames are always rendered in grayscale (no color mode).
+
+Key settings
+- Motion detector (tuning):
+  - `SC_DETECT_EVERY_N_FRAMES` (default 5): Run detection every Nth frame to reduce CPU
+  - `SC_MOTION_DOWNSCALE` (0.2–1.0, default 1.0)
+  - `SC_MOTION_BLUR_KERNEL` (odd, default 3)
+  - `SC_MOTION_DELTA_THRESH` (default 50)
+  - `SC_MOTION_DILATE_ITER` (default 2)
+  - `SC_MOTION_MIN_PIXELS` (default 250)
+- Saving:
+  - `SC_SAVE_DIR`: annotated output folder
+  - `SC_SAVE_DIR_RAW`: raw (no overlays) output folder
+  - `SC_SAVE_ANNOTATED_ON_DETECT=1` / `SC_SAVE_RAW_ON_DETECT=1`
+- Adaptive exposure (Picamera2):
+  - `SC_ADAPTIVE_SENSITIVITY=1`, `SC_EXP_BRIGHT_MEAN`, `SC_EXP_DARK_MEAN`, `SC_EXP_DARK_MEAN_EXIT`, `SC_EXP_EMA_ALPHA`
+  - EV/Gain/Shutter knobs: `SC_AE_EV_*`, `SC_GAIN_*`, `SC_SHUTTER_*`
+  - Motion-aware cadence: `SC_MOTION_ADJUST_PERIOD_SEC`, `SC_MOTION_ADJUST_PAUSE_SEC`
+- NOIR profile:
+  - `SC_CAMERA_PROFILE=standard|noir` (NOIR always grayscale; no color settings)
+
 Quickstart (Fresh Install)
 -------------------------
 This step-by-step guide covers a clean Raspberry Pi setup through a working, auto-starting camera app.
