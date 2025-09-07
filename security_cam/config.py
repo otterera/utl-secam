@@ -45,6 +45,17 @@ class Config:
     MOTION_ADJUST_PERIOD_SEC = float(os.getenv("SC_MOTION_ADJUST_PERIOD_SEC", 180.0))
     MOTION_ADJUST_PAUSE_SEC = float(os.getenv("SC_MOTION_ADJUST_PAUSE_SEC", 3.0))
 
+    # Background subtraction detector (MOG2/KNN) parameters
+    BG_METHOD = os.getenv("SC_BG_METHOD", "mog2").strip().lower()  # mog2|knn
+    BG_HISTORY = int(os.getenv("SC_BG_HISTORY", 200))
+    BG_VAR_THRESHOLD = float(os.getenv("SC_BG_VAR_THRESHOLD", 16.0))
+    BG_DETECT_SHADOWS = os.getenv("SC_BG_DETECT_SHADOWS", "1") == "1"
+    BG_DOWNSCALE = float(os.getenv("SC_BG_DOWNSCALE", 0.5))  # 0.2..1.0
+    BG_BLUR_KERNEL = int(os.getenv("SC_BG_BLUR_KERNEL", 5))  # odd int
+    BG_DILATE_ITER = int(os.getenv("SC_BG_DILATE_ITER", 2))
+    BG_MIN_PIXELS = int(os.getenv("SC_BG_MIN_PIXELS", 150))
+    BG_LEARNING_RATE = float(os.getenv("SC_BG_LEARNING_RATE", -1.0))  # -1 for auto
+
     # Saving
     # Normalize save directory: strip quotes/whitespace, expand ~ and $VARS, make absolute
     _SAVE_DIR_RAW = os.getenv("SC_SAVE_DIR", os.path.join("data", "captures"))
