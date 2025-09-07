@@ -202,37 +202,7 @@ class LbpFaceDetector(_CascadeFaceDetector):
         super().__init__(["lbpcascade_frontalface.xml"])
 
 
-class DnnFaceDetector:
-    def __init__(self, proto: str, model: str) -> None:
-        self.net = None
-        try:
-            if os.path.exists(proto) and os.path.exists(model):
-                self.net = cv2.dnn.readNetFromCaffe(proto, model)
-        except Exception:
-            self.net = None
-
-    def detect(self, frame_bgr: np.ndarray) -> List[Detection]:
-        if self.net is None:
-            return []
-        (h, w) = frame_bgr.shape[:2]
-        blob = cv2.dnn.blobFromImage(cv2.resize(frame_bgr, (300, 300)), 1.0, (300, 300), (104.0, 177.0, 123.0))
-        self.net.setInput(blob)
-        detections = self.net.forward()
-        out: List[Detection] = []
-        for i in range(0, detections.shape[2]):
-            conf = float(detections[0, 0, i, 2])
-            if conf < Config.FACE_DNN_CONF_THRESH:
-                continue
-            box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
-            (x1, y1, x2, y2) = box.astype("int")
-            x = max(0, x1)
-            y = max(0, y1)
-            w0 = max(0, x2 - x1)
-            h0 = max(0, y2 - y1)
-            if w0 <= 0 or h0 <= 0:
-                continue
-            out.append(Detection((int(x), int(y), int(w0), int(h0)), conf, "face"))
-        return out
+## DnnFaceDetector removed (DNN approach not used on Pi 3B)
 
 
 class MultiHumanDetector:
@@ -249,8 +219,6 @@ class MultiHumanDetector:
             backend = Config.FACE_BACKEND
             if backend == "lbp":
                 self.face = LbpFaceDetector()
-            elif backend == "dnn" and Config.FACE_DNN_PROTO and Config.FACE_DNN_MODEL:
-                self.face = DnnFaceDetector(Config.FACE_DNN_PROTO, Config.FACE_DNN_MODEL)
             else:
                 self.face = HaarFaceDetector()
 
