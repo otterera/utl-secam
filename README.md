@@ -260,10 +260,10 @@ sudoedit /etc/default/raspi-security-cam
 # SC_HOST=0.0.0.0
 # SC_PORT=8000
 # SC_CAMERA_BACKEND=picamera2   # or v4l2 or auto
-# SC_FRAME_WIDTH=640
-# SC_FRAME_HEIGHT=480
+# SC_FRAME_WIDTH=320
+# SC_FRAME_HEIGHT=240
 # SC_CAPTURE_FPS=5
-# SC_DETECT_EVERY_N_FRAMES=2
+# SC_DETECT_EVERY_N_FRAMES=1
 # SC_SAVE_DIR=/path/to/data/captures
 # SC_ACTIVE_WINDOWS="22:00-06:00"
 # Adaptive sensitivity (on by default):
