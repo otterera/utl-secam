@@ -45,7 +45,7 @@ Open the dashboard in a browser on your LAN:
 
 You should see:
 - A live latest frame
-- A red "HUMAN DETECTED" alert when motion is detected
+- A red "MOTION DETECTED" alert when motion is detected
 - A grid of recent captured images (saved in `data/captures/`)
 
 Configuration

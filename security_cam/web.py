@@ -168,7 +168,7 @@ _INDEX_TEMPLATE = """
         <span class="pill cam">Shutter {{ shutter_ms }} ms</span>
       </div>
       {% if alert_active %}
-        <div class="alert on">HUMAN DETECTED</div>
+        <div class="alert on">MOTION DETECTED</div>
       {% else %}
         <div class="alert off">Idle</div>
       {% endif %}
