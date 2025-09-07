@@ -21,12 +21,16 @@ Install Dependencies
 --------------------
 Prefer system packages on Raspberry Pi to reduce build time:
 
-    sudo apt update
-    sudo apt install -y python3-opencv python3-flask python3-numpy
+```
+sudo apt update
+sudo apt install -y python3-opencv python3-flask python3-numpy
+```
 
 If using the modern camera stack (recommended on Bullseye/Bookworm):
 
-    sudo apt install -y python3-picamera2
+```
+sudo apt install -y python3-picamera2
+```
 
 If Picamera2 is not available, the app will fallback to OpenCV V4L2 camera at `/dev/video0`.
 
@@ -37,15 +41,19 @@ On newer Raspberry Pi OS versions, enable the camera in `raspi-config` and ensur
 Run the App
 -----------
 
-    python3 main.py
+```
+python3 main.py
+```
 
 Open the dashboard in a browser on your LAN:
 
-    http://<pi-ip>:8000/
+```
+http://<pi-ip>:8000/
+```
 
 You should see:
 - A live latest frame
-- A red "MOTION DETECTED" alert when motion is detected
+- A red "HUMAN DETECTED" alert when motion is detected
 - A grid of recent captured images (saved in `data/captures/`)
 
 Configuration
@@ -91,45 +99,55 @@ Notes and Tips
 - Storage: Images can fill the SD card. The app enforces `SC_MAX_SAVED_IMAGES`; adjust to your capacity.
 - Service: To run on boot, wrap `python3 /path/to/main.py` in a `systemd` service.
 - Startup: Flask now starts even if the camera backend is slow or failing; set `SC_CAMERA_BACKEND=v4l2` to force OpenCV/V4L2 if Picamera2 causes startup issues.
- - NOIR (IR) cameras: Under IR illumination, colors are unreliable. In `noir` profile the app renders grayscale always (no color mode).
+- NOIR (IR) cameras: Under IR illumination, colors are unreliable. In `noir` profile the app renders grayscale always (no color mode).
 
 systemd Service (Auto-start on Boot)
 ------------------------------------
 Quick one-shot setup:
 
-    sudo bash scripts/setup_raspi_env.sh \
-      --user pi \
-      --project-dir /home/pi/raspi-security-cam \
-      --port 8000 \
-      --active-windows "22:00-06:00" \
-      --allow-ufw any
+```
+sudo bash scripts/setup_raspi_env.sh \
+  --user pi \
+  --project-dir /home/pi/raspi-security-cam \
+  --port 8000 \
+  --active-windows "22:00-06:00" \
+  --allow-ufw any
+```
 
 This script installs dependencies, sets up the systemd unit, creates the capture directory, writes `/etc/default/raspi-security-cam`, optionally opens UFW, and starts the service.
 
 Manual steps (alternative):
 1) Copy the unit file and edit paths/user:
 
-    sudo cp packaging/systemd/raspi-security-cam.service /etc/systemd/system/
-    sudoedit /etc/systemd/system/raspi-security-cam.service
+```
+sudo cp packaging/systemd/raspi-security-cam.service /etc/systemd/system/
+sudoedit /etc/systemd/system/raspi-security-cam.service
+```
 
    - Set `User=` to the user that should run it (e.g., `pi`).
    - Set `WorkingDirectory=` to the project path (e.g., `/home/pi/raspi-security-cam`).
 
 2) Optional: configure environment via `/etc/default`:
 
-    sudo cp packaging/systemd/raspi-security-cam.env.example /etc/default/raspi-security-cam
-    sudoedit /etc/default/raspi-security-cam
+```
+sudo cp packaging/systemd/raspi-security-cam.env.example /etc/default/raspi-security-cam
+sudoedit /etc/default/raspi-security-cam
+```
 
 3) Enable and start:
 
-    sudo systemctl daemon-reload
-    sudo systemctl enable raspi-security-cam
-    sudo systemctl start raspi-security-cam
-    systemctl status raspi-security-cam --no-pager
+```
+sudo systemctl daemon-reload
+sudo systemctl enable raspi-security-cam
+sudo systemctl start raspi-security-cam
+systemctl status raspi-security-cam --no-pager
+```
 
 4) Logs:
 
-    journalctl -u raspi-security-cam -f
+```
+journalctl -u raspi-security-cam -f
+```
 
 Scheduling
 ----------
@@ -177,8 +195,10 @@ This step-by-step guide covers a clean Raspberry Pi setup through a working, aut
 
 2) Update OS
 
-    sudo apt update && sudo apt full-upgrade -y
-    sudo reboot
+```
+sudo apt update && sudo apt full-upgrade -y
+sudo reboot
+```
 
 3) Enable the camera (libcamera stack)
 - `sudo raspi-config` → Interface Options → I2C → Enable (recommended)
@@ -186,22 +206,25 @@ This step-by-step guide covers a clean Raspberry Pi setup through a working, aut
 
 4) Install packages
 
-    sudo apt update
-    sudo apt install -y python3-opencv python3-flask python3-numpy python3-picamera2 ufw
-    # Optional diagnostics
-    sudo apt install -y rpicam-apps v4l-utils
+```
+sudo apt update
+sudo apt install -y python3-opencv python3-flask python3-numpy python3-picamera2 ufw
+# Optional diagnostics
+sudo apt install -y rpicam-apps v4l-utils
+```
 
 5) Get the app onto your Pi
-
+    ```
     cd ~
     mkdir -p ~/work && cd ~/work
     # If using git (replace with your origin):
     # git clone <your-repo-url> utl-secam
     # cd utl-secam
     # Or cd into the directory you copied.
+    ```
 
 6) One-shot setup (recommended)
-
+    ```
     cd /path/to/utl-secam
     sudo bash scripts/setup_raspi_env.sh \
       --user $USER \
@@ -209,6 +232,7 @@ This step-by-step guide covers a clean Raspberry Pi setup through a working, aut
       --port 8000 \
       --active-windows "22:00-06:00" \
       --allow-ufw 192.168.10.0/24   # your LAN (or 'any' or 'skip')
+    ```
 
 Notes:
 - Pass your actual username with `--user` (default pi). The script is idempotent.
@@ -216,9 +240,11 @@ Notes:
 
 7) Verify service + dashboard
 
-    sudo systemctl status raspi-security-cam --no-pager
-    sudo ss -lntp | grep :8000 || true
-    # In a browser on LAN: http://<pi-ip>:8000/
+```
+sudo systemctl status raspi-security-cam --no-pager
+sudo ss -lntp | grep :8000 || true
+# In a browser on LAN: http://<pi-ip>:8000/
+```
 
 Endpoints
 ---------
@@ -253,25 +279,33 @@ sudoedit /etc/default/raspi-security-cam
 
 Apply changes:
 
-    sudo systemctl restart raspi-security-cam
+```
+sudo systemctl restart raspi-security-cam
+```
 
 9) Firewall (UFW)
 
-    sudo ufw allow from 192.168.10.0/24 to any port 8000 proto tcp
-    sudo ufw status
+```
+sudo ufw allow from 192.168.10.0/24 to any port 8000 proto tcp
+sudo ufw status
+```
 
 Alternative: SSH tunnel instead of opening the port:
 
-    ssh -L 8000:localhost:8000 <user>@<pi-ip>
-    # then open http://localhost:8000
+```
+ssh -L 8000:localhost:8000 <user>@<pi-ip>
+# then open http://localhost:8000
+```
 
 10) Camera diagnostics
 If frames stay at 0, test the camera outside the app:
 
-    sudo systemctl stop raspi-security-cam
-    rpicam-hello -n -t 2000
-    v4l2-ctl --list-devices
-    dmesg | grep -i -E 'imx|ov|unicam|camera'
+```
+sudo systemctl stop raspi-security-cam
+rpicam-hello -n -t 2000
+v4l2-ctl --list-devices
+dmesg | grep -i -E 'imx|ov|unicam|camera'
+```
 
 If “no cameras available”, reseat the CSI ribbon and, if you know the model, force the overlay in `/boot/firmware/config.txt`:
 - `dtoverlay=ov5647` (v1)
@@ -281,14 +315,18 @@ If “no cameras available”, reseat the CSI ribbon and, if you know the model,
 
 Then reboot and retest:
 
-    sudo systemctl start raspi-security-cam
+```
+sudo systemctl start raspi-security-cam
+```
 
 11) Service management
 
-    sudo systemctl start raspi-security-cam
-    sudo systemctl stop raspi-security-cam
-    sudo systemctl restart raspi-security-cam
-    sudo journalctl -u raspi-security-cam -f
+```
+sudo systemctl start raspi-security-cam
+sudo systemctl stop raspi-security-cam
+sudo systemctl restart raspi-security-cam
+sudo journalctl -u raspi-security-cam -f
+```
 
 12) Where files live
 - Code: your project directory (e.g., `/home/<user>/work/utl-secam`)
@@ -298,10 +336,12 @@ Then reboot and retest:
 
 13) Uninstall / disable
 
-    sudo systemctl disable --now raspi-security-cam
-    sudo rm /etc/systemd/system/raspi-security-cam.service
-    sudo rm /etc/default/raspi-security-cam
-    sudo systemctl daemon-reload
+```
+sudo systemctl disable --now raspi-security-cam
+sudo rm /etc/systemd/system/raspi-security-cam.service
+sudo rm /etc/default/raspi-security-cam
+sudo systemctl daemon-reload
+```
 
 Optionally remove the project folder and capture directory.
 
