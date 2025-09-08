@@ -42,6 +42,8 @@ class Config:
     CAMERA_BACKEND = os.getenv("SC_CAMERA_BACKEND", "auto").strip().lower()  # Camera backend: auto|picamera2|v4l2
     # Camera profile: standard color camera vs. NOIR (infrared, no IR-cut)
     CAMERA_PROFILE = os.getenv("SC_CAMERA_PROFILE", "noir").strip().lower()  # standard|noir
+    # Prefer YUV420 (Picamera2) to access luma plane; set 0 to use RGB888
+    USE_YUV = os.getenv("SC_USE_YUV", "1") == "1"
     # Autofocus (Picamera2): mode and optional lock position
     AF_MODE = os.getenv("SC_AF_MODE", "auto").strip().lower()  # auto|continuous|manual
     AF_LENS_POSITION = float(os.getenv("SC_AF_LENS_POSITION", "-1"))  # -1 disables manual set

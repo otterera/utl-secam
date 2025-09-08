@@ -96,6 +96,7 @@ class PiCamera2Wrapper(BaseCamera):
         self.size = size  # Desired capture size
         self.picam2 = None  # Will hold Picamera2 instance
         self._started = False  # Tracks start state
+        self._use_yuv = bool(Config.USE_YUV)
 
     def start(self) -> None:
         """Configure and start Picamera2 streaming."""
@@ -103,10 +104,12 @@ class PiCamera2Wrapper(BaseCamera):
 
         self.picam2 = Picamera2()  # Create camera instance
         w, h = self.size  # Unpack desired width and height
-        # Prefer YUV420 to access Y plane for detection and convert once for UI
-        config = self.picam2.create_video_configuration(
-            main={"size": (w, h), "format": "YUV420"}
-        )
+        # Prefer YUV420 to access Y plane; allow override via SC_USE_YUV=0 (RGB888)
+        if self._use_yuv:
+            main = {"size": (w, h), "format": "YUV420"}
+        else:
+            main = {"size": (w, h), "format": "RGB888"}
+        config = self.picam2.create_video_configuration(main=main)
         self.picam2.configure(config)  # Apply configuration
         # Ensure AE is enabled; EV-bias relies on auto-exposure being active
         try:
@@ -146,24 +149,36 @@ class PiCamera2Wrapper(BaseCamera):
         """Capture a frame and return it in BGR order."""
         if not self._started:  # Guard if not started yet
             return None
-        # Picamera2 returns I420 YUV when configured; convert to BGR for UI
-        arr = self.picam2.capture_array("main")  # I420 planar: H*1.5 x W
+        if self._use_yuv:
+            # Picamera2 returns I420 YUV when configured; convert to BGR for UI
+            arr = self.picam2.capture_array("main")  # I420 planar: H*1.5 x W
+        else:
+            # RGB888 path (lighter CPU). We'll convert by channel swap only.
+            arr = self.picam2.capture_array()
         if arr is None:  # If no frame is available yet
             return None
         import cv2
         h = self.size[1]
         w = self.size[0]
-        # Cache Y plane for clients that want luma
-        try:
-            self._last_y = arr[:h, :w].copy()
-        except Exception:
+        if self._use_yuv:
+            # Cache Y plane for clients that want luma
+            try:
+                self._last_y = arr[:h, :w].copy()
+            except Exception:
+                self._last_y = None
+            try:
+                bgr = cv2.cvtColor(arr, cv2.COLOR_YUV2BGR_I420)
+                return bgr
+            except Exception:
+                # Fallback: return zeros of expected size to avoid crashing
+                return np.zeros((h, w, 3), dtype=np.uint8)
+        else:
+            # RGB path: no luma available
             self._last_y = None
-        try:
-            bgr = cv2.cvtColor(arr, cv2.COLOR_YUV2BGR_I420)
-            return bgr
-        except Exception:
-            # Fallback: return zeros of expected size to avoid crashing
-            return np.zeros((h, w, 3), dtype=np.uint8)
+            try:
+                return arr[:, :, ::-1].copy()  # RGB -> BGR
+            except Exception:
+                return np.zeros((h, w, 3), dtype=np.uint8)
 
     def stop(self) -> None:
         """Stop streaming and release resources."""
