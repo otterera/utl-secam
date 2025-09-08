@@ -199,7 +199,6 @@ _INDEX_TEMPLATE = """
         <span class="pill cam">Shtr {{ shutter_ms }} ms</span>
       </div>
       <nav style="display:flex; align-items:center; gap:10px">
-        <a href="{{ url_for('index') }}" style="color:#9eeaff; text-decoration:none;">Dashboard</a>
         <a href="{{ url_for('gallery') }}" style="color:#9eeaff; text-decoration:none;">Gallery</a>
       </nav>
       {% if alert_active %}
