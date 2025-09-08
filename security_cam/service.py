@@ -88,6 +88,7 @@ class SecurityCamService:
         self._adjust_last_ts: float = 0.0
         self._adjust_pause_until: float = 0.0
         self._seed_at_resume: bool = False
+        self._last_frame_ts: float = 0.0
         # Initialize public state mirrors
         self.state.ev_bias = float(self._ev_bias)
         self.state.gain = float(self._gain_value)
@@ -161,6 +162,15 @@ class SecurityCamService:
             if frame is None:
                 time.sleep(0.01)
                 continue
+            # Seed after idle/no-frame gaps to avoid stale baseline
+            now_frame = time.time()
+            if self._last_frame_ts and (now_frame - self._last_frame_ts) > float(self.config.SEED_AFTER_IDLE_SEC):
+                try:
+                    self.detector.reset()
+                except Exception:
+                    pass
+                self._seed_at_resume = True
+            self._last_frame_ts = now_frame
 
             # Apply fixed rotation (e.g., for upside-down installation)
             rot = int(self.config.ROTATE_DEGREES)
@@ -171,11 +181,17 @@ class SecurityCamService:
             elif rot == 270:
                 frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-            # If using NOIR profile and monochrome rendering is requested,
-            # convert to grayscale for stable detection/appearance under IR.
+            # If using NOIR profile, render mono for stable detection/appearance under IR.
             if self.config.CAMERA_PROFILE == "noir":
                 try:
-                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    # Prefer camera luma (Y) when available to avoid extra conversion
+                    y = None
+                    try:
+                        if hasattr(self.camera, "get_last_luma"):
+                            y = self.camera.get_last_luma()
+                    except Exception:
+                        y = None
+                    gray = y if y is not None else cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                     frame = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
                 except Exception:
                     pass
@@ -258,8 +274,6 @@ class SecurityCamService:
         if not self.config.ADAPTIVE_SENSITIVITY:
             self.state.exposure_state = "off"
             self._detect_stride_dyn = self._detect_stride_base
-            self._hit_threshold_dyn = self._hit_threshold_base
-            self._min_size_dyn = self._min_size_base
             return
         # Compute metrics
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -417,6 +431,13 @@ class SecurityCamService:
         if self.camera.set_ev(ev):
             self._ev_bias = ev
             self._ev_last_update = now
+            # Reseed around significant camera control changes to avoid false triggers
+            try:
+                self._adjust_pause_until = now + float(self.config.MOTION_ADJUST_PAUSE_SEC)
+                self.detector.reset()
+                self._seed_at_resume = True
+            except Exception:
+                pass
 
     def _maybe_adjust_gain(self, exp_state: str) -> None:
         """Adapt analogue gain if supported and enabled.
@@ -452,6 +473,12 @@ class SecurityCamService:
         if self.camera.set_gain(g):
             self._gain_value = g
             self._gain_last_update = now
+            try:
+                self._adjust_pause_until = now + float(self.config.MOTION_ADJUST_PAUSE_SEC)
+                self.detector.reset()
+                self._seed_at_resume = True
+            except Exception:
+                pass
 
     def _maybe_adjust_shutter(self, exp_state: str) -> None:
         """Adapt manual exposure time (shutter) for dim/bright scenes.
@@ -481,6 +508,12 @@ class SecurityCamService:
                     self._shutter_us = target
                     self._manual_exposure = True
                     changed = True
+                    try:
+                        self._adjust_pause_until = now + float(self.config.MOTION_ADJUST_PAUSE_SEC)
+                        self.detector.reset()
+                        self._seed_at_resume = True
+                    except Exception:
+                        pass
         elif exp_state in ("normal", "over"):
             # Reduce shutter toward base; re-enable AE near base
             step = int(self.config.SHUTTER_RETURN_STEP_US)
@@ -490,6 +523,12 @@ class SecurityCamService:
                     self._shutter_us = target
                     self._manual_exposure = True
                     changed = True
+                    try:
+                        self._adjust_pause_until = now + float(self.config.MOTION_ADJUST_PAUSE_SEC)
+                        self.detector.reset()
+                        self._seed_at_resume = True
+                    except Exception:
+                        pass
             # If near base, re-enable AE and stop manual control
             if abs(self._shutter_us - base) <= step:
                 if hasattr(self.camera, "set_auto_exposure"):

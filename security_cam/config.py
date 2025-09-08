@@ -42,6 +42,10 @@ class Config:
     CAMERA_BACKEND = os.getenv("SC_CAMERA_BACKEND", "auto").strip().lower()  # Camera backend: auto|picamera2|v4l2
     # Camera profile: standard color camera vs. NOIR (infrared, no IR-cut)
     CAMERA_PROFILE = os.getenv("SC_CAMERA_PROFILE", "noir").strip().lower()  # standard|noir
+    # Autofocus (Picamera2): mode and optional lock position
+    AF_MODE = os.getenv("SC_AF_MODE", "auto").strip().lower()  # auto|continuous|manual
+    AF_LENS_POSITION = float(os.getenv("SC_AF_LENS_POSITION", "-1"))  # -1 disables manual set
+    AF_LOCK_ON_NOIR = os.getenv("SC_AF_LOCK_ON_NOIR", "1") == "1"  # If NOIR, prefer manual lock
 
     # Detection
     DETECT_EVERY_N_FRAMES = int(os.getenv("SC_DETECT_EVERY_N_FRAMES", 1))  # Run detector every N frames
@@ -67,6 +71,16 @@ class Config:
     10〜15：高感度、20〜30：厳しめ。"""
 
     MOTION_DILATE_ITER = int(os.getenv("SC_MOTION_DILATE_ITER", 2))  # morphology to close gaps
+    # Optional morphology opening to remove speckle noise after thresholding
+    MOTION_OPEN_ITER = int(os.getenv("SC_MOTION_OPEN_ITER", 1))  # 0 disables
+
+    # Optional noise-adaptive thresholding based on a small ROI's noise floor
+    MOTION_NOISE_ADAPT = os.getenv("SC_MOTION_NOISE_ADAPT", "1") == "1"
+    MOTION_NOISE_K = float(os.getenv("SC_MOTION_NOISE_K", 1.5))  # threshold += K * sigma
+    MOTION_NOISE_ROI_FRAC = float(os.getenv("SC_MOTION_NOISE_ROI_FRAC", 0.2))  # center ROI fraction
+
+    # Optional static mask to ignore regions (black = ignore, white = consider)
+    MOTION_MASK_PATH = os.getenv("SC_MOTION_MASK_PATH", "").strip()
     """変化領域を何回膨張させるか。
     SC_MOTION_DILATE_ITER 回、変化領域を膨張させて隙間を埋めたり近接する動きを統合します。
     値が大きいほど穴埋めや近接領域の統合が進み、変化ピクセル数が増えます。
@@ -99,7 +113,7 @@ class Config:
     _SAVE_DIR_NORM = os.path.expanduser(os.path.expandvars(_SAVE_DIR_NORM))
     SAVE_DIR = os.path.abspath(_SAVE_DIR_NORM) if not os.path.isabs(_SAVE_DIR_NORM) else _SAVE_DIR_NORM  # absolute path
     SAVE_ON_DETECT = os.getenv("SC_SAVE_ON_DETECT", "1") == "1"  # Save when a detection occurs
-    SAVE_INTERVAL_SEC = float(os.getenv("SC_SAVE_INTERVAL_SEC", 0.05))  # Minimum seconds between saves
+    SAVE_INTERVAL_SEC = float(os.getenv("SC_SAVE_INTERVAL_SEC", 0.5))  # Minimum seconds between saves
     MAX_SAVED_IMAGES = int(os.getenv("SC_MAX_SAVED_IMAGES", 100))  # Retention limit for saved images
 
     # Annotated and raw saving controls
@@ -180,3 +194,6 @@ class Config:
     GAIN_STEP = float(os.getenv("SC_GAIN_STEP", 0.5))
     GAIN_RETURN_STEP = float(os.getenv("SC_GAIN_RETURN_STEP", 0.25))
     GAIN_UPDATE_INTERVAL_SEC = float(os.getenv("SC_GAIN_UPDATE_INTERVAL_SEC", 0.5))
+
+    # Reseed strategy
+    SEED_AFTER_IDLE_SEC = float(os.getenv("SC_SEED_AFTER_IDLE_SEC", 3.0))  # Reseed motion baseline after idle gaps

@@ -128,7 +128,7 @@ def create_app(service: SecurityCamService) -> flask.Flask:
                 if frame is None:
                     time.sleep(0.05)
                     continue
-                ok, buf = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 70])
+                ok, buf = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 60])
                 if not ok:
                     continue
                 yield boundary + b"\r\nContent-Type: image/jpeg\r\n\r\n" + buf.tobytes() + b"\r\n"

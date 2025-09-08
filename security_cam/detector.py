@@ -39,6 +39,10 @@ class MotionDetector:
 
     def __init__(self) -> None:
         self.prev: np.ndarray | None = None
+        # Optional static mask path from config; loaded lazily and resized per scale
+        self._mask_path = Config.MOTION_MASK_PATH
+        self._mask_cached_scale: float | None = None
+        self._mask_scaled: np.ndarray | None = None
 
     def reset(self) -> None:
         """Reset the motion baseline so the next frame seeds it without detecting.
@@ -75,10 +79,47 @@ class MotionDetector:
             return []
         diff = cv2.absdiff(self.prev, cur)
         self.prev = cur
-        _, thresh = cv2.threshold(diff, int(Config.MOTION_DELTA_THRESH), 255, cv2.THRESH_BINARY)
+        # Noise-adaptive thresholding: base + K * sigma over a small center ROI
+        base_thresh = int(Config.MOTION_DELTA_THRESH)
+        if Config.MOTION_NOISE_ADAPT:
+            h, w = diff.shape[:2]
+            rf = max(0.05, min(0.9, float(Config.MOTION_NOISE_ROI_FRAC)))
+            cx1 = int(w * (0.5 - rf / 2))
+            cy1 = int(h * (0.5 - rf / 2))
+            cx2 = int(w * (0.5 + rf / 2))
+            cy2 = int(h * (0.5 + rf / 2))
+            roi = diff[cy1:cy2, cx1:cx2]
+            try:
+                sigma = float(roi.std()) if roi.size else 0.0
+            except Exception:
+                sigma = 0.0
+            base_thresh = min(255, max(0, int(base_thresh + float(Config.MOTION_NOISE_K) * sigma)))
+        _, thresh = cv2.threshold(diff, base_thresh, 255, cv2.THRESH_BINARY)
         dilate_iter = max(0, int(Config.MOTION_DILATE_ITER))
         if dilate_iter:
             thresh = cv2.dilate(thresh, None, iterations=dilate_iter)
+        # Optional morphological opening to remove speckles
+        open_iter = max(0, int(Config.MOTION_OPEN_ITER))
+        if open_iter:
+            kernel = np.ones((3, 3), np.uint8)
+            thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=open_iter)
+        # Apply static mask if provided (black=ignore, white=keep)
+        if self._mask_path:
+            try:
+                if self._mask_scaled is None or self._mask_cached_scale != scale:
+                    mask = cv2.imread(self._mask_path, cv2.IMREAD_GRAYSCALE)
+                    if mask is not None:
+                        # Resize mask to current working size
+                        mh, mw = cur.shape[:2]
+                        mask_r = cv2.resize(mask, (mw, mh), interpolation=cv2.INTER_NEAREST)
+                        # Binarize
+                        _, mask_b = cv2.threshold(mask_r, 127, 255, cv2.THRESH_BINARY)
+                        self._mask_scaled = mask_b
+                        self._mask_cached_scale = scale
+                if self._mask_scaled is not None:
+                    thresh = cv2.bitwise_and(thresh, self._mask_scaled)
+            except Exception:
+                pass
         changed_pixels = int(cv2.countNonZero(thresh))
         if changed_pixels < int(Config.MOTION_MIN_PIXELS):
             return []
