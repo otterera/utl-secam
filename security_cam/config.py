@@ -142,7 +142,7 @@ class Config:
 
     # Frame orientation
     # Rotate frames by this many degrees (allowed: 0, 90, 180, 270). Default: 180 for upside-down installs.
-    ROTATE_DEGREES = int(os.getenv("SC_ROTATE_DEGREES", 0))
+    ROTATE_DEGREES = int(os.getenv("SC_ROTATE_DEGREES", 180))
 
     # NOIR (infrared) handling: always render grayscale under IR
 
