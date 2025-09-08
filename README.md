@@ -64,11 +64,12 @@ Configuration
 Tune behavior using environment variables (defaults shown). Only the motion detector is supported.
 
 Camera
-- `SC_CAMERA_BACKEND=auto` (or `picamera2`/`v4l2`)
+- `SC_CAMERA_BACKEND=auto` (or `picamera2`/`v4l2`) — `auto` tries Picamera2 first, then falls back to V4L2 (`/dev/video0`).
 - `SC_CAMERA_PROFILE=standard|noir` (default `noir`; NOIR always grayscale)
 - `SC_FRAME_WIDTH=320` / `SC_FRAME_HEIGHT=240`
 - `SC_CAPTURE_FPS=5`
 - `SC_ROTATE_DEGREES=180` (0/90/180/270)
+- `SC_USE_YUV=1|0` (default `1`, Picamera2 only): when `1`, capture in YUV420 and use luma (Y) for detection for stable IR behavior; when `0`, use RGB888.
 - Autofocus (Pi Camera v3 via Picamera2)
   - `SC_AF_MODE=auto|continuous|manual` (default `auto`). Choose `manual` to lock focus.
   - `SC_AF_LENS_POSITION=<float>` Lens position when `manual` is used (and for NOIR lock when enabled). Set `-1` to skip.
@@ -96,6 +97,8 @@ Saving
 - `SC_SAVE_ANNOTATED_ON_DETECT=1` / `SC_SAVE_RAW_ON_DETECT=1`
 - `SC_SAVE_INTERVAL_SEC=0.5` (default raised from 0.05 to reduce SD wear/CPU)
 - `SC_MAX_SAVED_IMAGES=1000`
+Notes:
+- The dashboard shows annotated images. Clicking a thumbnail opens the raw image at `/captures_raw/<file>` when available; it falls back to the annotated copy.
 
 Adaptive exposure (Picamera2)
 - `SC_ADAPTIVE_SENSITIVITY=1`
@@ -105,13 +108,20 @@ Adaptive exposure (Picamera2)
 - Over-exposure handling: `SC_ENHANCE_ON_OVER=1`, `SC_ENHANCE_OVER_ALPHA=0.85`, `SC_ENHANCE_OVER_BETA=-10`
 - EV: `SC_AE_EV_ADAPT_ENABLE=1`, `SC_AE_EV_MIN`, `SC_AE_EV_MAX`, `SC_AE_EV_STEP`, `SC_AE_EV_RETURN_STEP`, `SC_AE_EV_UPDATE_INTERVAL_SEC`
 - Gain: `SC_GAIN_ADAPT_ENABLE=1`, `SC_GAIN_MIN`, `SC_GAIN_MAX`, `SC_GAIN_STEP`, `SC_GAIN_RETURN_STEP`, `SC_GAIN_UPDATE_INTERVAL_SEC`
-- Shutter: `SC_SHUTTER_ADAPT_ENABLE=0|1`, `SC_SHUTTER_MIN_US`, `SC_SHUTTER_MAX_US`, `SC_SHUTTER_STEP_US`, `SC_SHUTTER_RETURN_STEP_US`, `SC_SHUTTER_BASE_US`, `SC_SHUTTER_UPDATE_INTERVAL_SEC`
+- Shutter: `SC_SHUTTER_ADAPT_ENABLE=0|1` (default `0`), `SC_SHUTTER_MIN_US`, `SC_SHUTTER_MAX_US`, `SC_SHUTTER_STEP_US`, `SC_SHUTTER_RETURN_STEP_US`, `SC_SHUTTER_BASE_US`, `SC_SHUTTER_UPDATE_INTERVAL_SEC`
 - Reseed baseline after idle gaps: `SC_SEED_AFTER_IDLE_SEC=3.0`
+Notes:
+- These controls require Picamera2 and hardware support. When running via V4L2/USB webcams, these settings are ignored safely.
+
+Dashboard and server
+- `SC_HOST=0.0.0.0` (bind address), `SC_PORT=8000`, `SC_DEBUG=0`
+- `SC_GALLERY_LATEST_COUNT=9`: Number of recent images shown on the dashboard
+- `SC_ALERT_COOLDOWN_SEC=10.0`: How long the alert banner stays on after motion
 
 Notes and Tips
 --------------
 - Performance: Defaults are tuned for Pi 3B. If CPU is high, lower resolution, reduce FPS, or raise `SC_DETECT_EVERY_N_FRAMES` for more headroom.
-- Camera backend: Picamera2 is preferred. If it’s not available, ensure `/dev/video0` is exposed (e.g., `libcamera-vid --inline --width 640 --height 480 --framerate 10 --codec yuv420 --listen &` can provide a v4l2 loopback if configured) or use the legacy stack if your OS provides it.
+- Camera backend: Picamera2 is preferred. If it’s not available, ensure `/dev/video0` is exposed (e.g., `libcamera-vid --inline --width 640 --height 480 --framerate 10 --codec yuv420 --listen &` can provide a V4L2 loopback if configured; requires the `v4l2loopback` kernel module) or use the legacy stack if your OS provides it.
 - Storage: Images can fill the SD card. The app enforces `SC_MAX_SAVED_IMAGES`; adjust to your capacity.
 - Service: To run on boot, wrap `python3 /path/to/main.py` in a `systemd` service.
 - Startup: Flask now starts even if the camera backend is slow or failing; set `SC_CAMERA_BACKEND=v4l2` to force OpenCV/V4L2 if Picamera2 causes startup issues.
@@ -173,6 +183,11 @@ Scheduling
   - Nightly: `SC_ACTIVE_WINDOWS=22:00-06:00`
   - Multiple windows: `SC_ACTIVE_WINDOWS=22:00-06:00,12:30-13:30`
 - When disarmed, frames still update on the dashboard but detection/saving are paused. The header shows Armed/Disarmed.
+Notes:
+- Windows wrap past midnight when the end time is earlier than the start (e.g., `22:00-06:00`).
+- The end of each window is exclusive; start is inclusive.
+- An empty `SC_ACTIVE_WINDOWS` means “always armed”.
+- The schedule uses the device’s local time.
 
 License
 -------
@@ -220,8 +235,9 @@ sudo reboot
 ```
 
 3) Enable the camera (libcamera stack)
-- `sudo raspi-config` → Interface Options → I2C → Enable (recommended)
-- Legacy Camera should remain DISABLED on Bookworm
+- On Raspberry Pi OS Bookworm, the libcamera stack is active by default; no changes are usually required.
+- Do NOT enable the “Legacy Camera” option on Bookworm.
+- I2C is optional and unrelated to the camera stack; enable it only if you need I2C peripherals.
 
 4) Install packages
 
@@ -270,6 +286,9 @@ Endpoints
 - Latest frame: `http://<pi-ip>:8000/latest.jpg`
 - MJPEG stream: `http://<pi-ip>:8000/stream.mjpg`
 - JSON state: `http://<pi-ip>:8000/api/state` (includes exposure/adaptive telemetry)
+- Captured image (annotated): `http://<pi-ip>:8000/captures/<filename>`
+- Captured image (raw): `http://<pi-ip>:8000/captures_raw/<filename>`
+Note: `/captures_raw/<file>` serves raw images, falling back to annotated if the raw copy was not saved.
 
 8) Configure behavior
 Edit the service env:
@@ -292,6 +311,7 @@ sudoedit /etc/default/raspi-security-cam
 # SC_EXP_DARK_MEAN_EXIT=60
 # SC_EXP_HIGH_CLIP_FRAC=0.05
 # SC_EXP_LOW_CLIP_FRAC=0.03
+# (Legacy compatibility; not used by motion-only detector)
 # SC_ADAPT_HIT_THRESHOLD_DELTA=0.5
 # SC_ADAPT_MIN_SIZE_SCALE=1.2
 # SC_ADAPT_DETECT_STRIDE_SCALE=2.0
