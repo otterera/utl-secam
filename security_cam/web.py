@@ -63,6 +63,37 @@ def create_app(service: SecurityCamService) -> flask.Flask:
         """Serve a saved capture by filename from the configured directory."""
         return flask.send_from_directory(Config.SAVE_DIR, filename, mimetype="image/jpeg")
 
+    @app.route("/captures_raw/<path:filename>")
+    def captures_raw(filename: str):
+        """Serve a raw (unannotated) capture by filename, fallback to annotated if missing.
+
+        This allows clicking an annotated thumbnail to view the corresponding raw image.
+        """
+        raw_path = os.path.join(Config.SAVE_DIR_RAW, filename)
+        if os.path.isfile(raw_path):
+            return flask.send_from_directory(Config.SAVE_DIR_RAW, filename, mimetype="image/jpeg")
+        # Fallback gracefully to annotated if raw isn't available
+        return flask.send_from_directory(Config.SAVE_DIR, filename, mimetype="image/jpeg")
+
+    @app.route("/gallery")
+    def gallery():
+        """Render a gallery page showing all annotated captures (newest first)."""
+        try:
+            files = [
+                f for f in os.listdir(Config.SAVE_DIR) if f.lower().endswith(".jpg")
+            ]
+        except FileNotFoundError:
+            files = []
+        # Sort by mtime (newest first)
+        files.sort(key=lambda f: os.path.getmtime(os.path.join(Config.SAVE_DIR, f)), reverse=True)
+        html = flask.render_template_string(
+            _GALLERY_TEMPLATE,
+            files=files,
+            save_dir=Config.SAVE_DIR,
+            ts=int(time.time()),
+        )
+        return html
+
     @app.route("/api/state")
     def api_state():
         """Return the current service state as JSON."""
@@ -167,6 +198,10 @@ _INDEX_TEMPLATE = """
         <span class="pill cam">Gain {{ '%.2f' % gain }}</span>
         <span class="pill cam">Shtr {{ shutter_ms }} ms</span>
       </div>
+      <nav style="display:flex; align-items:center; gap:10px">
+        <a href="/" style="color:#9eeaff; text-decoration:none;">Dashboard</a>
+        <a href="/gallery" style="color:#9eeaff; text-decoration:none;">Gallery</a>
+      </nav>
       {% if alert_active %}
         <div class="alert on">MOTION DETECTED</div>
       {% else %}
@@ -183,7 +218,7 @@ _INDEX_TEMPLATE = """
       <div class="grid">
         {% for f in latest_files %}
           <div class="card">
-            <a href="{{ url_for('captures', filename=f) }}" target="_blank" rel="noopener">
+            <a href="{{ url_for('captures_raw', filename=f) }}" target="_blank" rel="noopener" title="Click to view raw (unannotated)">
               <img src="{{ url_for('captures', filename=f) }}?ts={{ts}}" alt="{{f}}" />
             </a>
           </div>
@@ -193,5 +228,49 @@ _INDEX_TEMPLATE = """
       </div>
     </main>
   </body>
+</html>
+"""
+
+_GALLERY_TEMPLATE = """
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Security Cam – Gallery</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 0; background: #111; color: #eee; }
+    header { padding: 12px 16px; background: #222; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    main { padding: 16px; }
+    .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+    .card { background: #1b1b1b; padding: 8px; border-radius: 8px; }
+    img { width: 100%; height: auto; border-radius: 6px; display: block; }
+    .grid img { cursor: zoom-in; }
+    .meta { color: #9aa; font-size: 12px; }
+    a.link { color:#9eeaff; text-decoration:none; }
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display:flex; align-items:center; gap:10px">
+      <a class="link" href="/">⟵ Dashboard</a>
+      <span class="meta">All captures from: {{save_dir}}</span>
+    </div>
+  </header>
+  <main>
+    <div class="grid">
+      {% for f in files %}
+        <div class="card">
+          <a href="{{ url_for('captures_raw', filename=f) }}" target="_blank" rel="noopener" title="Click to view raw (unannotated)">
+            <img src="{{ url_for('captures', filename=f) }}?ts={{ts}}" alt="{{f}}" />
+          </a>
+          <div class="meta">{{ f }}</div>
+        </div>
+      {% else %}
+        <div class="meta">No captures found.</div>
+      {% endfor %}
+    </div>
+  </main>
+</body>
 </html>
 """
