@@ -99,7 +99,7 @@ class Config:
     _SAVE_DIR_NORM = os.path.expanduser(os.path.expandvars(_SAVE_DIR_NORM))
     SAVE_DIR = os.path.abspath(_SAVE_DIR_NORM) if not os.path.isabs(_SAVE_DIR_NORM) else _SAVE_DIR_NORM  # absolute path
     SAVE_ON_DETECT = os.getenv("SC_SAVE_ON_DETECT", "1") == "1"  # Save when a detection occurs
-    SAVE_INTERVAL_SEC = float(os.getenv("SC_SAVE_INTERVAL_SEC", 1.0))  # Minimum seconds between saves
+    SAVE_INTERVAL_SEC = float(os.getenv("SC_SAVE_INTERVAL_SEC", 0.05))  # Minimum seconds between saves
     MAX_SAVED_IMAGES = int(os.getenv("SC_MAX_SAVED_IMAGES", 100))  # Retention limit for saved images
 
     # Annotated and raw saving controls
