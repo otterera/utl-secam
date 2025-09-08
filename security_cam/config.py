@@ -98,12 +98,12 @@ class Config:
     変化したピクセル数が SC_MOTION_MIN_PIXELS 以上なら、モーションと判定し、動いている領域のバウンディングボックスを返します。
     「どれくらいの領域が変化すればモーションとみなすか」の基準。"""
 
-    MOTION_ADJUST_PERIOD_SEC = float(os.getenv("SC_MOTION_ADJUST_PERIOD_SEC", 180.0))
+    MOTION_ADJUST_PERIOD_SEC = float(os.getenv("SC_MOTION_ADJUST_PERIOD_SEC", 120.0))
     """ Auto-adjustment cadence when using motion detection backend
     例えば180.0に設定した場合、180秒ごとにカメラの自動調整を実行します
     自動調整は例えば、露出やホワイトバランスの再調整を含みます"""
 
-    MOTION_ADJUST_PAUSE_SEC = float(os.getenv("SC_MOTION_ADJUST_PAUSE_SEC", 0.5))
+    MOTION_ADJUST_PAUSE_SEC = float(os.getenv("SC_MOTION_ADJUST_PAUSE_SEC", 1.0))
     """ Pause motion detection this long after an adjustment
     例えば3.0に設定した場合、自動調整後3秒間はモーション検出を一時停止します
     これにより、自動調整を原因とする露出の急激な変化による誤検出を防ぎます"""
@@ -116,7 +116,7 @@ class Config:
     SAVE_DIR = os.path.abspath(_SAVE_DIR_NORM) if not os.path.isabs(_SAVE_DIR_NORM) else _SAVE_DIR_NORM  # absolute path
     SAVE_ON_DETECT = os.getenv("SC_SAVE_ON_DETECT", "1") == "1"  # Save when a detection occurs
     SAVE_INTERVAL_SEC = float(os.getenv("SC_SAVE_INTERVAL_SEC", 0.5))  # Minimum seconds between saves
-    MAX_SAVED_IMAGES = int(os.getenv("SC_MAX_SAVED_IMAGES", 100))  # Retention limit for saved images
+    MAX_SAVED_IMAGES = int(os.getenv("SC_MAX_SAVED_IMAGES", 1000))  # Retention limit for saved images
 
     # Annotated and raw saving controls
     # Save an annotated copy (with boxes/labels) to SAVE_DIR
@@ -133,7 +133,7 @@ class Config:
 
     # Dashboard
     ALERT_COOLDOWN_SEC = float(os.getenv("SC_ALERT_COOLDOWN_SEC", 10.0))  # Keep alert banner visible this long
-    GALLERY_LATEST_COUNT = int(os.getenv("SC_GALLERY_LATEST_COUNT", 18))  # Recent images shown on dashboard
+    GALLERY_LATEST_COUNT = int(os.getenv("SC_GALLERY_LATEST_COUNT", 9))  # Recent images shown on dashboard
     HOST = os.getenv("SC_HOST", "0.0.0.0")  # Flask bind host
     PORT = int(os.getenv("SC_PORT", 8000))  # Flask bind port
     DEBUG = os.getenv("SC_DEBUG", "0") == "1"  # Flask debug switch
