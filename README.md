@@ -56,7 +56,7 @@ http://<pi-ip>:8000/
 
 You should see:
 - A live latest frame
-- A red "HUMAN DETECTED" alert when motion is detected
+- A red "MOTION DETECTED" alert when motion is detected
 - A grid of recent captured images (saved in `data/captures/`)
 
 Configuration
@@ -75,7 +75,7 @@ Camera
   - `SC_AF_LOCK_ON_NOIR=1|0` (default `1`). If NOIR profile and `SC_AF_LENS_POSITION>=0`, focus is locked to avoid hunting at night.
 
 Motion detector
-- `SC_DETECT_EVERY_N_FRAMES=5`: Run detector every Nth frame
+- `SC_DETECT_EVERY_N_FRAMES=1`: Run detector every Nth frame
 - `SC_MOTION_DOWNSCALE=1.0`: 0.2–1.0 (lower = faster + smoother)
 - `SC_MOTION_BLUR_KERNEL=3`: Odd blur kernel (3/5/7)
 - `SC_MOTION_DELTA_THRESH=50`: Pixel change threshold (0–255)
@@ -86,21 +86,23 @@ Motion detector
   - `SC_MOTION_NOISE_K=1.5`: Multiplier for ROI standard deviation.
   - `SC_MOTION_NOISE_ROI_FRAC=0.2`: ROI fraction (e.g., 0.2 = center 20% by 20%).
   - `SC_MOTION_MASK_PATH=/path/to/mask.png`: Static ignore mask (white = detect, black = ignore). Auto-resized.
-- `SC_MOTION_MIN_PIXELS=250`: Pixels changed (after downscale) to trigger
-- Motion-aware exposure cadence: `SC_MOTION_ADJUST_PERIOD_SEC=180.0`, `SC_MOTION_ADJUST_PAUSE_SEC=3.0`
+- `SC_MOTION_MIN_PIXELS` (default = 3% of frame area): Pixels changed (after downscale) to trigger. At 320×240 this is 2304.
+- Motion-aware exposure cadence: `SC_MOTION_ADJUST_PERIOD_SEC=120.0`, `SC_MOTION_ADJUST_PAUSE_SEC=1.0`
 
 Saving
 - `SC_SAVE_DIR=data/captures`: Annotated output folder
 - `SC_SAVE_DIR_RAW=data/captures_raw`: Raw (no overlays) output folder
+- `SC_SAVE_ON_DETECT=1`: Master switch to save on detections
 - `SC_SAVE_ANNOTATED_ON_DETECT=1` / `SC_SAVE_RAW_ON_DETECT=1`
 - `SC_SAVE_INTERVAL_SEC=0.5` (default raised from 0.05 to reduce SD wear/CPU)
-- `SC_MAX_SAVED_IMAGES=2000`
+- `SC_MAX_SAVED_IMAGES=1000`
 
 Adaptive exposure (Picamera2)
 - `SC_ADAPTIVE_SENSITIVITY=1`
-- `SC_EXP_BRIGHT_MEAN=200` / `SC_EXP_DARK_MEAN=40` / `SC_EXP_DARK_MEAN_EXIT=50`
-- `SC_EXP_EMA_ALPHA=0.35`, `SC_EXP_HIGH_CLIP_FRAC=0.05`, `SC_EXP_LOW_CLIP_FRAC=0.05`
-- Frame enhancement: `SC_ENHANCE_UNDER_ALPHA=2.5`, `SC_ENHANCE_UNDER_BETA=20`, blending/hold via `SC_ENHANCE_BLEND_ALPHA`, `SC_ENHANCE_HOLD_SEC`
+- `SC_EXP_BRIGHT_MEAN=200` / `SC_EXP_DARK_MEAN=50` / `SC_EXP_DARK_MEAN_EXIT=60`
+- `SC_EXP_EMA_ALPHA=0.35`, `SC_EXP_HIGH_CLIP_FRAC=0.05`, `SC_EXP_LOW_CLIP_FRAC=0.03`
+- Frame enhancement: `SC_ENHANCE_UNDER_ALPHA=2.5`, `SC_ENHANCE_UNDER_BETA=20`, `SC_ENHANCE_BLEND_ALPHA=0.4`, `SC_ENHANCE_HOLD_SEC=2.0`
+- Over-exposure handling: `SC_ENHANCE_ON_OVER=1`, `SC_ENHANCE_OVER_ALPHA=0.85`, `SC_ENHANCE_OVER_BETA=-10`
 - EV: `SC_AE_EV_ADAPT_ENABLE=1`, `SC_AE_EV_MIN`, `SC_AE_EV_MAX`, `SC_AE_EV_STEP`, `SC_AE_EV_RETURN_STEP`, `SC_AE_EV_UPDATE_INTERVAL_SEC`
 - Gain: `SC_GAIN_ADAPT_ENABLE=1`, `SC_GAIN_MIN`, `SC_GAIN_MAX`, `SC_GAIN_STEP`, `SC_GAIN_RETURN_STEP`, `SC_GAIN_UPDATE_INTERVAL_SEC`
 - Shutter: `SC_SHUTTER_ADAPT_ENABLE=0|1`, `SC_SHUTTER_MIN_US`, `SC_SHUTTER_MAX_US`, `SC_SHUTTER_STEP_US`, `SC_SHUTTER_RETURN_STEP_US`, `SC_SHUTTER_BASE_US`, `SC_SHUTTER_UPDATE_INTERVAL_SEC`
@@ -182,15 +184,16 @@ The app now uses only the motion detector (frame differencing). HOG/face and bac
 
 Key settings
 - Motion detector (tuning):
-  - `SC_DETECT_EVERY_N_FRAMES` (default 5): Run detection every Nth frame to reduce CPU
+  - `SC_DETECT_EVERY_N_FRAMES` (default 1): Run detection every Nth frame to reduce CPU
   - `SC_MOTION_DOWNSCALE` (0.2–1.0, default 1.0)
   - `SC_MOTION_BLUR_KERNEL` (odd, default 3)
   - `SC_MOTION_DELTA_THRESH` (default 50)
   - `SC_MOTION_DILATE_ITER` (default 2)
-  - `SC_MOTION_MIN_PIXELS` (default 250)
+  - `SC_MOTION_MIN_PIXELS` (default = 3% of frame area; e.g., 2304 at 320×240)
 - Saving:
   - `SC_SAVE_DIR`: annotated output folder
   - `SC_SAVE_DIR_RAW`: raw (no overlays) output folder
+  - `SC_SAVE_ON_DETECT=1`: master on/off for saving when motion is detected
   - `SC_SAVE_ANNOTATED_ON_DETECT=1` / `SC_SAVE_RAW_ON_DETECT=1`
 - Adaptive exposure (Picamera2):
   - `SC_ADAPTIVE_SENSITIVITY=1`, `SC_EXP_BRIGHT_MEAN`, `SC_EXP_DARK_MEAN`, `SC_EXP_DARK_MEAN_EXIT`, `SC_EXP_EMA_ALPHA`
@@ -285,9 +288,10 @@ sudoedit /etc/default/raspi-security-cam
 # Adaptive sensitivity (on by default):
 # SC_ADAPTIVE_SENSITIVITY=1
 # SC_EXP_BRIGHT_MEAN=200
-# SC_EXP_DARK_MEAN=40
+# SC_EXP_DARK_MEAN=50
+# SC_EXP_DARK_MEAN_EXIT=60
 # SC_EXP_HIGH_CLIP_FRAC=0.05
-# SC_EXP_LOW_CLIP_FRAC=0.05
+# SC_EXP_LOW_CLIP_FRAC=0.03
 # SC_ADAPT_HIT_THRESHOLD_DELTA=0.5
 # SC_ADAPT_MIN_SIZE_SCALE=1.2
 # SC_ADAPT_DETECT_STRIDE_SCALE=2.0
