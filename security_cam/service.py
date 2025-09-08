@@ -191,7 +191,17 @@ class SecurityCamService:
                             y = self.camera.get_last_luma()
                     except Exception:
                         y = None
-                    gray = y if y is not None else cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    if y is not None:
+                        gray = y
+                        # Apply the same rotation to luma as we applied to the frame
+                        if rot == 180:
+                            gray = cv2.rotate(gray, cv2.ROTATE_180)
+                        elif rot == 90:
+                            gray = cv2.rotate(gray, cv2.ROTATE_90_CLOCKWISE)
+                        elif rot == 270:
+                            gray = cv2.rotate(gray, cv2.ROTATE_90_COUNTERCLOCKWISE)
+                    else:
+                        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                     frame = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
                 except Exception:
                     pass
