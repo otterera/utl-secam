@@ -198,14 +198,14 @@ _INDEX_TEMPLATE = """
         <span class="pill cam">Gain {{ '%.2f' % gain }}</span>
         <span class="pill cam">Shtr {{ shutter_ms }} ms</span>
       </div>
-      <nav style="display:flex; align-items:center; gap:10px">
-        <a href="{{ url_for('gallery') }}" style="color:#9eeaff; text-decoration:none;">Gallery</a>
-      </nav>
       {% if alert_active %}
         <div class="alert on">MOTION DETECTED</div>
       {% else %}
         <div class="alert off">Idle</div>
       {% endif %}
+      <nav style="display:flex; align-items:center; gap:10px; margin-left:auto;">
+        <a href="{{ url_for('gallery') }}" style="color:#4da3ff; text-decoration: underline;">Gallery</a>
+      </nav>
     </header>
     <main>
       <div class="live card">
