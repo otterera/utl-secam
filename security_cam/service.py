@@ -54,6 +54,11 @@ class SecurityCamService:
         self._latest_frame: Optional[np.ndarray] = None
         self._last_saved_ts: float = 0.0
         os.makedirs(self.config.SAVE_DIR, exist_ok=True)
+        # Ensure raw save directory exists too (for /captures_raw and raw saving)
+        try:
+            os.makedirs(self.config.SAVE_DIR_RAW, exist_ok=True)
+        except Exception:
+            pass
         # Adaptive internals
         self._detect_stride_base = max(1, self.config.DETECT_EVERY_N_FRAMES)
         self._detect_stride_dyn = self._detect_stride_base
