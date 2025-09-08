@@ -9,6 +9,9 @@ Features
 - Lightweight and configurable for Raspberry Pi 3B
 - Optional daily arming schedule (e.g., 22:00-06:00)
 - Adaptive exposure control with motion-aware cadence to avoid false triggers
+- Picamera2 YUV pipeline with luma-based detection for lower CPU and better IR consistency
+- Autofocus controls for Pi Camera v3 (IMX708): auto/continuous/manual with optional focus lock for night
+- Robust motion detector: noise-adaptive thresholding, optional morphological opening, and static ignore mask support
 
 Requirements
 ------------
@@ -66,6 +69,10 @@ Camera
 - `SC_FRAME_WIDTH=320` / `SC_FRAME_HEIGHT=240`
 - `SC_CAPTURE_FPS=5`
 - `SC_ROTATE_DEGREES=180` (0/90/180/270)
+- Autofocus (Pi Camera v3 via Picamera2)
+  - `SC_AF_MODE=auto|continuous|manual` (default `auto`). Choose `manual` to lock focus.
+  - `SC_AF_LENS_POSITION=<float>` Lens position when `manual` is used (and for NOIR lock when enabled). Set `-1` to skip.
+  - `SC_AF_LOCK_ON_NOIR=1|0` (default `1`). If NOIR profile and `SC_AF_LENS_POSITION>=0`, focus is locked to avoid hunting at night.
 
 Motion detector
 - `SC_DETECT_EVERY_N_FRAMES=5`: Run detector every Nth frame
@@ -73,6 +80,12 @@ Motion detector
 - `SC_MOTION_BLUR_KERNEL=3`: Odd blur kernel (3/5/7)
 - `SC_MOTION_DELTA_THRESH=50`: Pixel change threshold (0–255)
 - `SC_MOTION_DILATE_ITER=2`: Dilate iterations to close gaps
+- Noise handling and masks
+  - `SC_MOTION_OPEN_ITER=1`: Morphological opening iterations after thresholding (0 disables) to remove speckles.
+  - `SC_MOTION_NOISE_ADAPT=1`: Increase threshold by `K * sigma` measured over a small center ROI.
+  - `SC_MOTION_NOISE_K=1.5`: Multiplier for ROI standard deviation.
+  - `SC_MOTION_NOISE_ROI_FRAC=0.2`: ROI fraction (e.g., 0.2 = center 20% by 20%).
+  - `SC_MOTION_MASK_PATH=/path/to/mask.png`: Static ignore mask (white = detect, black = ignore). Auto-resized.
 - `SC_MOTION_MIN_PIXELS=250`: Pixels changed (after downscale) to trigger
 - Motion-aware exposure cadence: `SC_MOTION_ADJUST_PERIOD_SEC=180.0`, `SC_MOTION_ADJUST_PAUSE_SEC=3.0`
 
@@ -80,7 +93,7 @@ Saving
 - `SC_SAVE_DIR=data/captures`: Annotated output folder
 - `SC_SAVE_DIR_RAW=data/captures_raw`: Raw (no overlays) output folder
 - `SC_SAVE_ANNOTATED_ON_DETECT=1` / `SC_SAVE_RAW_ON_DETECT=1`
-- `SC_SAVE_INTERVAL_SEC=1.0`
+- `SC_SAVE_INTERVAL_SEC=0.5` (default raised from 0.05 to reduce SD wear/CPU)
 - `SC_MAX_SAVED_IMAGES=2000`
 
 Adaptive exposure (Picamera2)
@@ -91,6 +104,7 @@ Adaptive exposure (Picamera2)
 - EV: `SC_AE_EV_ADAPT_ENABLE=1`, `SC_AE_EV_MIN`, `SC_AE_EV_MAX`, `SC_AE_EV_STEP`, `SC_AE_EV_RETURN_STEP`, `SC_AE_EV_UPDATE_INTERVAL_SEC`
 - Gain: `SC_GAIN_ADAPT_ENABLE=1`, `SC_GAIN_MIN`, `SC_GAIN_MAX`, `SC_GAIN_STEP`, `SC_GAIN_RETURN_STEP`, `SC_GAIN_UPDATE_INTERVAL_SEC`
 - Shutter: `SC_SHUTTER_ADAPT_ENABLE=0|1`, `SC_SHUTTER_MIN_US`, `SC_SHUTTER_MAX_US`, `SC_SHUTTER_STEP_US`, `SC_SHUTTER_RETURN_STEP_US`, `SC_SHUTTER_BASE_US`, `SC_SHUTTER_UPDATE_INTERVAL_SEC`
+- Reseed baseline after idle gaps: `SC_SEED_AFTER_IDLE_SEC=3.0`
 
 Notes and Tips
 --------------
@@ -99,7 +113,9 @@ Notes and Tips
 - Storage: Images can fill the SD card. The app enforces `SC_MAX_SAVED_IMAGES`; adjust to your capacity.
 - Service: To run on boot, wrap `python3 /path/to/main.py` in a `systemd` service.
 - Startup: Flask now starts even if the camera backend is slow or failing; set `SC_CAMERA_BACKEND=v4l2` to force OpenCV/V4L2 if Picamera2 causes startup issues.
-- NOIR (IR) cameras: Under IR illumination, colors are unreliable. In `noir` profile the app renders grayscale always (no color mode).
+- NOIR (IR) cameras: Under IR illumination, colors are unreliable. In `noir` profile the app renders grayscale always and forces neutral colour gains (1.0,1.0) with AWB off for stable luma.
+- Picamera2 YUV: The camera runs in YUV420; detection prefers the Y plane to avoid extra conversions and improve consistency in low light. BGR conversion happens only for UI/JPEG.
+- Streaming: MJPEG quality is set lower (60) to reduce CPU/bandwidth on low-power Pis.
 
 systemd Service (Auto-start on Boot)
 ------------------------------------
@@ -353,3 +369,11 @@ Optionally remove the project folder and capture directory.
 - 640x480 @ 5 FPS is a good balance.
 - `SC_DETECT_EVERY_N_FRAMES=2` cuts CPU while staying responsive.
 - Adaptive sensitivity (default on) auto-tunes detection in poor lighting.
+- For night-only installs: consider `SC_AF_MODE=manual`, set a lens position that matches your typical subject distance, and enable an IR illuminator.
+
+Low-Light and Night Behavior
+----------------------------
+- Autofocus at night: AF can hunt in dim scenes. Use `SC_AF_MODE=manual` and a sensible `SC_AF_LENS_POSITION` for your target distance, or keep `auto/continuous` during day and enable `SC_AF_LOCK_ON_NOIR=1` so focus locks when using the NOIR profile.
+- Ignore masks: Create a mask image matching your camera aspect (white = detect, black = ignore). Point `SC_MOTION_MASK_PATH` to it. The app resizes it to the working resolution (after any internal downscale). Make the mask using a snapshot from `/latest.jpg` to ensure rotation/orientation matches.
+- Noise handling: If the scene has heavy sensor snow at night, enable `SC_MOTION_OPEN_ITER` (e.g., 1–2) and leave `SC_MOTION_NOISE_ADAPT=1` so the threshold scales with noise.
+- Reseeding: The app automatically reseeds the motion baseline (a) after configured camera adjustments, (b) after successful EV/gain/shutter changes, and (c) after idle/no-frame gaps controlled by `SC_SEED_AFTER_IDLE_SEC`. This prevents false positives from global brightness jumps.
