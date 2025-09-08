@@ -139,7 +139,7 @@ sudo bash scripts/setup_raspi_env.sh \
   --project-dir /home/pi/raspi-security-cam \
   --port 8000 \
   --active-windows "22:00-06:00" \
-  --allow-ufw any
+  --allow-ufw 192.168.0.0/16
 ```
 
 This script installs dependencies, sets up the systemd unit, creates the capture directory, writes `/etc/default/raspi-security-cam`, optionally opens UFW, and starts the service.
@@ -266,7 +266,7 @@ sudo apt install -y rpicam-apps v4l-utils
       --project-dir $(pwd) \
       --port 8000 \
       --active-windows "22:00-06:00" \
-      --allow-ufw 192.168.10.0/24   # your LAN (or 'any' or 'skip')
+      --allow-ufw 192.168.0.0/16   # your LAN CIDR (or 'skip')
     ```
 
 Notes:
